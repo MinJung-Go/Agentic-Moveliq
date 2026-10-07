@@ -18,6 +18,26 @@ final class AuthPolicyTests: XCTestCase {
         XCTAssertEqual(AuthInputPolicy.inviteCode("a10f92b86d44c903e718002a"), "A10F92B86D44C903E718002A")
         XCTAssertEqual(AuthInputPolicy.inviteCode(" - "), "")
     }
+    func testHTTPSPrefixIsSharedByAuthChatAndRealtime() throws {
+        for base in ["https://moveliq.work/api", "https://moveliq.work/api/"] {
+            XCTAssertEqual(try ServiceEndpoint.url("/auth/login", baseURL: base).absoluteString, "https://moveliq.work/api/v1/auth/login")
+            XCTAssertEqual(try ServiceEndpoint.url("/chat/completions", baseURL: base).absoluteString, "https://moveliq.work/api/v1/chat/completions")
+            XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: base).absoluteString, "wss://moveliq.work/api/v1/realtime")
+        }
+        XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: "https://moveliq.work").absoluteString, "wss://moveliq.work/v1/realtime")
+        XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: "http://47.100.234.212:8080").absoluteString, "ws://47.100.234.212:8080/v1/realtime")
+    }
+    func testInvalidHTTPSBaseOrRequestPathCannotRedirectCredentials() {
+        for base in ["https://user:pass@moveliq.work/api", "https://moveliq.work/api?token=x", "https://moveliq.work/api#x",
+                     "https://moveliq.work/api/../admin", "https://moveliq.work/api/%2e%2e", "https://moveliq.work/api%2fv1",
+                     "https://moveliq.work//api", "https://moveliq.work/api\\v1", "https://moveliq.work:0/api",
+                     "https://moveliq.work:65536/api", "https://moveliq.work/a pi", "https:///api", ""] {
+            XCTAssertThrowsError(try ServiceEndpoint.url("/auth/me", baseURL: base), base)
+        }
+        for path in ["//evil.com", "/../admin", "/auth/%2e%2e", "/auth/me?token=x", "/auth/me#x", "https://evil.com", ""] {
+            XCTAssertThrowsError(try ServiceEndpoint.url(path, baseURL: "https://moveliq.work/api"), path)
+        }
+    }
     func testUsernameNormalizationAndBounds() {
         XCTAssertEqual(AuthInputPolicy.username("  Alice_01\n"), "alice_01")
         for value in ["user", String(repeating: "a", count: 24)] { XCTAssertTrue(AuthInputPolicy.validUsername(value)) }

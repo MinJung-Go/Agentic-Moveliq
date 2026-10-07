@@ -2,6 +2,8 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
+第 31 轮：HTTPS /api 与 WSS 生产入口适配，配合独立 Service 的 Nginx、共享租约及双副本部署。[需求](31-production-hardening/requirements.md) · [清单](31-production-hardening/checklist.md)。默认 IP 暂时保留，生产切换与 IPA 尚未执行。
+
 | 轮次 | 主题 | 文档 |
 |------|------|------|
 | 01-foundation | 项目基线：P0/P1/P2 全量实现 | [需求](01-foundation/requirements.md) · [清单](01-foundation/checklist.md) · [设计稿](01-foundation/design.html) |

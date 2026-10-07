@@ -75,10 +75,7 @@ final class RealtimeCall: ObservableObject {
             guard let session = ServiceCredentials.session else { self.fail("请先登录。"); return }
             Self.idleTimer.acquire(self.idleTimerOwner)
             do {
-                var components = URLComponents(url: try ServiceEndpoint.url("/realtime"), resolvingAgainstBaseURL: false)!
-                components.scheme = components.scheme == "https" ? "wss" : "ws"
-                guard let url = components.url else { throw URLError(.badURL) }
-                var request = URLRequest(url: url)
+                var request = URLRequest(url: try ServiceEndpoint.realtimeURL())
                 request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
                 request.timeoutInterval = 20
                 let socket = ServiceTransport.shared.session.webSocketTask(with: request)
