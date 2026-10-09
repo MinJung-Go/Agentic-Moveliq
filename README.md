@@ -15,7 +15,7 @@
 
 ---
 
-> 当前开发：第 29 轮「账号登录与独立服务」。源码已切换为邀请注册＋鉴权云端代理；服务已部署，App 默认连接 `http://47.100.234.212:8080`，尚未发布新 IPA。进度见 [checklist](docs/29-auth-service/checklist.md)，接入见 [服务说明](docs/29-auth-service/integration.md)。
+> 当前开发：语音输入与 GLM 实时通话；第 31 轮切换已备案域名 `https://moveliq.work/api`，旧安装版本地址不会自动更新。进度和验证见 [域名切换清单](docs/31-domain-https/checklist.md)，服务接入见 [服务说明](docs/29-auth-service/integration.md)。
 
 ## 界面示意
 

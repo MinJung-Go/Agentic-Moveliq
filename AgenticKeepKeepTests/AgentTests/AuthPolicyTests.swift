@@ -2,10 +2,8 @@ import XCTest
 @testable import AgenticKeepKeep
 
 final class AuthPolicyTests: XCTestCase {
-    func testOnlyApprovedHTTPDeploymentIsAllowed() throws {
-        XCTAssertEqual(try ServiceEndpoint.url("/auth/login", baseURL: "http://47.100.234.212:8080").absoluteString,
-                       "http://47.100.234.212:8080/v1/auth/login")
-        for base in ["http://47.100.234.212", "http://47.100.234.212:8081", "http://47.100.234.213:8080",
+    func testAllHTTPDeploymentsAreRejected() throws {
+        for base in ["http://47.100.234.212:8080", "http://47.100.234.212", "http://47.100.234.212:8081", "http://47.100.234.213:8080",
                      "http://47.100.234.212:8080.evil.com", "http://47.100.234.212:8080@evil.com",
                      "http://47.100.234.212:8080?other=1", "http://47.100.234.212:8080/path"] {
             XCTAssertThrowsError(try ServiceEndpoint.url("/auth/me", baseURL: base))
@@ -25,7 +23,7 @@ final class AuthPolicyTests: XCTestCase {
             XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: base).absoluteString, "wss://moveliq.work/api/v1/realtime")
         }
         XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: "https://moveliq.work").absoluteString, "wss://moveliq.work/v1/realtime")
-        XCTAssertEqual(try ServiceEndpoint.realtimeURL(baseURL: "http://47.100.234.212:8080").absoluteString, "ws://47.100.234.212:8080/v1/realtime")
+        XCTAssertThrowsError(try ServiceEndpoint.realtimeURL(baseURL: "http://47.100.234.212:8080"))
     }
     func testInvalidHTTPSBaseOrRequestPathCannotRedirectCredentials() {
         for base in ["https://user:pass@moveliq.work/api", "https://moveliq.work/api?token=x", "https://moveliq.work/api#x",

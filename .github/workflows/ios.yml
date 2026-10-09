@@ -13,7 +13,7 @@ on:
         default: false
 
 env:
-  MOVELIQ_SERVICE_URL: ${{ vars.MOVELIQ_SERVICE_URL || 'http://47.100.234.212:8080' }}
+  MOVELIQ_SERVICE_URL: ${{ vars.MOVELIQ_SERVICE_URL || 'https://moveliq.work/api' }}
 
 jobs:
   realtime-audio:

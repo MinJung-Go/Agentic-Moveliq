@@ -119,3 +119,7 @@ Moveliq 品牌统一、Milo 默认首页与统一记录／聊天入口。
 ## 第 30 轮 · Milo 语音与 GLM 实时通话
 
 原连续语音已交付 0.5.6；新增 GLM 实时语音／可选视频 UI 已确认，App 与 Service 接入中。[交互稿](30-milo-voice-chat/design.html)。[需求](30-milo-voice-chat/requirements.md) · [清单](30-milo-voice-chat/checklist.md)。
+
+## 第 31 轮 · 已备案域名 HTTPS/WSS
+
+App 默认连接 https://moveliq.work/api，移除 HTTP 放行；服务端独立部署。[需求](31-domain-https/requirements.md) · [清单](31-domain-https/checklist.md)。

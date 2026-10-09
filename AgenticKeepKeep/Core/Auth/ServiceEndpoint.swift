@@ -1,6 +1,6 @@
 import Foundation
 
-// Temporary HTTP exception is restricted to the explicitly configured deployment.
+// Authentication and realtime requests require a trusted HTTPS service endpoint.
 enum ServiceEndpoint {
     static var baseURL: String {
         (Bundle.main.object(forInfoDictionaryKey: "MoveliqServiceURL") as? String ?? "")
@@ -13,7 +13,7 @@ enum ServiceEndpoint {
               !normalized.unicodeScalars.contains(where: { CharacterSet.whitespacesAndNewlines.union(.controlCharacters).contains($0) }),
               !normalized.contains("\\"),
               let base = URLComponents(string: normalized),
-              (base.scheme == "https" || normalized == "http://47.100.234.212:8080"),
+              base.scheme == "https",
               let host = base.host, !host.isEmpty,
               base.user == nil, base.password == nil, base.query == nil, base.fragment == nil,
               base.port == nil || (1...65535).contains(base.port!),
