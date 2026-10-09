@@ -15,7 +15,7 @@
 
 ---
 
-> 当前开发：语音输入与 GLM 实时通话；第 31 轮切换已备案域名 `https://moveliq.work/api`，旧安装版本地址不会自动更新。进度和验证见 [域名切换清单](docs/31-domain-https/checklist.md)，服务接入见 [服务说明](docs/29-auth-service/integration.md)。
+> 当前开发：语音输入与 GLM 实时通话；第 31 轮切换已备案域名 `https://moveliq.work/api`，旧安装版本地址不会自动更新。[0.5.14（35）HTTPS IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/37917041170/artifacts/11610593869) 已构建并校验，需重签安装。进度和验证见 [域名切换清单](docs/31-domain-https/checklist.md)，服务接入见 [服务说明](docs/29-auth-service/integration.md)。
 
 ## 界面示意
 
