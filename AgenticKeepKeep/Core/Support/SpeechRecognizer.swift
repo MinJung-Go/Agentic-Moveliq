@@ -1,16 +1,22 @@
 import AVFoundation
 import Foundation
+import Combine
 import Speech
 
 /// 语音输入：把说话内容转写成文字，填进记录输入框。
-/// 识别在本机/系统服务完成，不经过本 App 的服务器（也没有服务器）。
+/// 优先设备端识别；不可用时由 Apple 系统服务处理。原音频不上传到 App 代理。
 @MainActor
-final class SpeechRecognizer: ObservableObject {
+final class SpeechRecognizer: ObservableObject, VoiceRecognizing {
 
     @Published private(set) var isRecording = false
     @Published var transcript = ""
     @Published var errorText: String?
 
+    var onUpdate: ((String, Bool) -> Void)?
+    var onFailure: ((String) -> Void)?
+    private var generation = UUID()
+    private var isStarting = false
+    private var tapInstalled = false
     private let locale: Locale
     private var recognizer: SFSpeechRecognizer?
     private var audioEngine: AVAudioEngine?
@@ -35,35 +41,44 @@ final class SpeechRecognizer: ObservableObject {
     }
 
     func start() async {
-        guard !isRecording else { return }
+        guard !isRecording, !isStarting else { return }
+        isStarting = true
+        let token = UUID()
+        generation = token
+        defer { if generation == token { isStarting = false } }
         errorText = nil
         transcript = ""
 
         guard let recognizer, recognizer.isAvailable else {
-            errorText = "当前设备无法使用语音识别"
+            fail("当前设备无法使用语音识别")
             return
         }
 
         let speechStatus = await requestSpeechAuthorization()
+        guard generation == token, !Task.isCancelled else { return }
         guard speechStatus == .authorized else {
-            errorText = "未授权语音识别，请在系统设置中开启"
+            fail("未授权语音识别，请在系统设置中开启")
             return
         }
 
         let micGranted = await requestMicrophonePermission()
+        guard generation == token, !Task.isCancelled else { return }
         guard micGranted else {
-            errorText = "未授权麦克风，请在系统设置中开启"
+            fail("未授权麦克风，请在系统设置中开启")
             return
         }
 
-        begin(with: recognizer)
+        begin(with: recognizer, token: token)
     }
 
     func stop() {
+        generation = UUID()
+        isStarting = false
         audioEngine?.stop()
-        if let engine = audioEngine {
+        if tapInstalled, let engine = audioEngine {
             engine.inputNode.removeTap(onBus: 0)
         }
+        tapInstalled = false
         request?.endAudio()
         task?.cancel()
 
@@ -77,7 +92,7 @@ final class SpeechRecognizer: ObservableObject {
 
     // MARK: - 内部
 
-    private func begin(with recognizer: SFSpeechRecognizer) {
+    private func begin(with recognizer: SFSpeechRecognizer, token: UUID) {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -85,6 +100,7 @@ final class SpeechRecognizer: ObservableObject {
 
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
+            request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
             self.request = request
 
             let engine = AVAudioEngine()
@@ -93,8 +109,7 @@ final class SpeechRecognizer: ObservableObject {
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)
             guard format.channelCount > 0, format.sampleRate > 0 else {
-                errorText = "没有可用的麦克风输入"
-                stop()
+                fail("没有可用的麦克风输入")
                 return
             }
 
@@ -102,6 +117,7 @@ final class SpeechRecognizer: ObservableObject {
                 request.append(buffer)
             }
 
+            tapInstalled = true
             engine.prepare()
             try engine.start()
 
@@ -109,20 +125,27 @@ final class SpeechRecognizer: ObservableObject {
 
             task = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 Task { @MainActor in
-                    guard let self else { return }
+                    guard let self, self.generation == token else { return }
                     if let result {
                         self.transcript = result.bestTranscription.formattedString
+                        let text = self.transcript
                         if result.isFinal { self.stop() }
+                        self.onUpdate?(text, result.isFinal)
                     }
                     if error != nil, self.isRecording {
-                        self.stop()
+                        self.fail("语音识别中断，请重试")
                     }
                 }
             }
         } catch {
-            errorText = "录音启动失败：\(error.localizedDescription)"
-            stop()
+            fail("录音启动失败：\(error.localizedDescription)")
         }
+    }
+
+    private func fail(_ message: String) {
+        stop()
+        errorText = message
+        onFailure?(message)
     }
 
     private func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {

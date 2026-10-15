@@ -411,6 +411,8 @@ struct PrivacyInfoView: View {
             note: "AI 请求经 Moveliq 服务中转到模型供应商。",
             items: [
                 PrivacyItem(symbol: "text.bubble.fill", tint: Theme.accent, text: "你输入的文本及对话内容，经 Moveliq 服务转交模型处理"),
+                PrivacyItem(symbol: "video.fill", tint: Theme.accent, text: "实时通话音频及主动开启摄像头后的画面经服务转交模型，App 不保存原音视频，文字留在聊天中"),
+                PrivacyItem(symbol: "mic.fill", tint: Theme.accent, text: "语音优先在设备上识别，不支持时可能使用 Apple 服务；原音频不保存，转写文字按聊天内容处理"),
                 PrivacyItem(symbol: "chart.bar.doc.horizontal.fill", tint: Theme.positive, text: "聚合后的统计摘要，例如「近 7 天训练 4 次、日均睡眠 6.2 小时、深蹲停滞 3 周」"),
                 PrivacyItem(symbol: "photo.fill", tint: Theme.secondaryLabel, text: "主动选择识别的照片以压缩图发送，原图留在本机"),
             ]

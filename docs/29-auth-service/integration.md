@@ -11,7 +11,7 @@
 1. 按服务仓库 README 配置 PostgreSQL，执行迁移，生成首个种子邀请码。
 2. 配置服务端 `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`；如需搜索，配置 `SEARCH_ENABLED=true` 与智谱搜索密钥。
 3. 部署 HTTPS 服务：Vercel 或带 HTTPS 反向代理的自有服务器，验证 `/health`。
-4. App 默认接入 `http://47.100.234.212:8080`（用户授权的临时 HTTP）；仅对此 IP 配置 ATS 例外，客户端仅允许此精确 HTTP 地址。其他服务必须 HTTPS。可用 `MOVELIQ_SERVICE_URL` 覆盖，不要包含 `/v1`。
+4. 第 31 轮起 App 默认接入 `https://moveliq.work/api`，移除临时 IP HTTP 例外，端点仅允许 HTTPS。可用 `MOVELIQ_SERVICE_URL` 覆盖，不要包含 `/v1`；实时地址自动转换为 WSS。
 5. GitHub App 仓库 Actions Variables 设置同名 `MOVELIQ_SERVICE_URL`；CI 将其传给 build/test/archive。它是公开地址，不是密钥。
 6. 重新构建 App，邀请码注册→登录→记录解析→对话流式→搜索→退出并恢复登录。
 
@@ -22,7 +22,7 @@ xcodebuild build -project AgenticKeepKeep.xcodeproj -scheme AgenticKeepKeep \
   MOVELIQ_SERVICE_URL=https://your-service.example.com CODE_SIGNING_ALLOWED=NO
 ```
 
-默认服务地址为上述 8080 地址；GitHub Actions 未配置变量时使用相同默认值。其他未配置／不允许的地址显示明确错误，不会回退到旧 BYOK 或本地模型。临时 HTTP 没有传输加密，迁移 HTTPS 后应移除该 IP 的 ATS 例外。iOS 17+ 支持 IP 例外，依据 [Apple ATS 文档](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking)。
+默认服务地址为 `https://moveliq.work/api`；GitHub Actions 未配置变量时使用相同默认值。其他未配置／不允许的地址显示明确错误，不会回退到旧 BYOK、本地模型或明文 HTTP。旧安装包不会自动改地址；新地址需要重新登录，旧本地账户数据按原地址保留，不自动合并。实施与验证见[第 31 轮清单](../31-domain-https/checklist.md)。
 
 ## 认证协议
 

@@ -2,17 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>47.100.234.212</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
 	<key>MoveliqServiceURL</key>
 	<string>$(MOVELIQ_SERVICE_URL)</string>
 	<key>CFBundleDevelopmentRegion</key>
@@ -55,12 +44,12 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Moveliq 读取你的健康数据（睡眠、心率、步数、运动记录），用于生成个性化的训练分析。原始健康记录保存在本机；使用 AI 功能时，相关汇总摘要经 Moveliq 服务转交模型处理。</string>
 	<key>NSCameraUsageDescription</key>
-	<string>用于拍摄食物照片以估算热量。</string>
+	<string>用于拍摄记录照片，以及在你主动开启实时通话摄像头后共享画面。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于从相册选择食物照片以估算热量。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用于将语音转写为训练与饮食记录。</string>
+	<string>用于语音对话及将语音转写为训练与饮食记录。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>用于将语音转写为记录文本，识别在本机完成。</string>
+	<string>用于将语音转写为对话和记录文本。优先在设备上识别；设备或语言不支持时可能使用 Apple 语音识别服务。</string>
 </dict>
 </plist>

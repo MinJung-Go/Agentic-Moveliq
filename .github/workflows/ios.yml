@@ -13,11 +13,35 @@ on:
         default: false
 
 env:
-  MOVELIQ_SERVICE_URL: ${{ vars.MOVELIQ_SERVICE_URL || 'http://47.100.234.212:8080' }}
+  MOVELIQ_SERVICE_URL: ${{ vars.MOVELIQ_SERVICE_URL || 'https://moveliq.work/api' }}
 
 jobs:
+  realtime-audio:
+    name: Apple 音频转换检查
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 验证采样转换、上传停滞与播放积压检测
+        run: |
+          audio_test_dir="$RUNNER_TEMP/realtime-audio"
+          mkdir -p "$audio_test_dir/Sources/AgenticKeepKeep" "$audio_test_dir/Tests/AgenticKeepKeepTests"
+          cp AgenticKeepKeep/Core/Realtime/RealtimeInputConverter.swift AgenticKeepKeep/Core/Realtime/RealtimeInputHealth.swift AgenticKeepKeep/Core/Realtime/RealtimeCaptureProgress.swift AgenticKeepKeep/Core/Realtime/RealtimeIdleTimer.swift AgenticKeepKeep/Core/Realtime/RealtimePlaybackQueue.swift "$audio_test_dir/Sources/AgenticKeepKeep/"
+          cp AgenticKeepKeepTests/AgentTests/RealtimeInputTests.swift AgenticKeepKeepTests/AgentTests/RealtimeInputHealthTests.swift AgenticKeepKeepTests/AgentTests/RealtimeCaptureProgressTests.swift AgenticKeepKeepTests/AgentTests/RealtimeIdleTimerTests.swift AgenticKeepKeepTests/AgentTests/RealtimePlaybackQueueTests.swift "$audio_test_dir/Tests/AgenticKeepKeepTests/"
+          cat > "$audio_test_dir/Package.swift" <<'SWIFT'
+          // swift-tools-version: 5.9
+          import PackageDescription
+          let package = Package(name: "RealtimeAudioChecks", platforms: [.macOS(.v13)], targets: [
+              .target(name: "AgenticKeepKeep"),
+              .testTarget(name: "AgenticKeepKeepTests", dependencies: ["AgenticKeepKeep"])
+          ])
+          SWIFT
+          swift test --package-path "$audio_test_dir"
+
   test:
     name: 构建 + 单元测试
+    needs: realtime-audio
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

@@ -2,6 +2,8 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
+第 31 轮：HTTPS /api 与 WSS 生产入口适配，配合独立 Service 的 Nginx、共享租约及双副本部署。[需求](31-production-hardening/requirements.md) · [清单](31-production-hardening/checklist.md)。默认 IP 暂时保留，生产切换与 IPA 尚未执行。
+
 | 轮次 | 主题 | 文档 |
 |------|------|------|
 | 01-foundation | 项目基线：P0/P1/P2 全量实现 | [需求](01-foundation/requirements.md) · [清单](01-foundation/checklist.md) · [设计稿](01-foundation/design.html) |
@@ -113,3 +115,11 @@ Moveliq 品牌统一、Milo 默认首页与统一记录／聊天入口。
 ## 第 29 轮 · 独立鉴权服务与 App 登录（需求整理中）
 
 停用本地模型，独立鉴权与模型代理服务；用户名密码登录、邀请码注册，每次注册后发放 3 个子邀请码并逐层延续。[需求](29-auth-service/requirements.md) · [清单](29-auth-service/checklist.md)。
+
+## 第 30 轮 · Milo 语音与 GLM 实时通话
+
+原连续语音已交付 0.5.6；新增 GLM 实时语音／可选视频 UI 已确认，App 与 Service 接入中。[交互稿](30-milo-voice-chat/design.html)。[需求](30-milo-voice-chat/requirements.md) · [清单](30-milo-voice-chat/checklist.md)。
+
+## 第 31 轮 · 已备案域名 HTTPS/WSS
+
+App 默认连接 https://moveliq.work/api，移除 HTTP 放行；服务端独立部署。[需求](31-domain-https/requirements.md) · [清单](31-domain-https/checklist.md)。
