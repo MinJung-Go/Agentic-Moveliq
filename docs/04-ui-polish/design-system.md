@@ -1,7 +1,7 @@
 # Moveliq 设计系统（DESIGN.md）
 
 - 版本：2.1 · 2026-10-15（纠正历史文档与当前 Theme 的差异）
-- 用途：共用组件与主题的现行基线；历史截图不代表当前实现。第 33 轮[组件统一需求](../33-home-report-readability/requirements.md)与[交互稿](../33-home-report-readability/design.html)已确认并接入 SwiftUI，iOS 构建及真机效果待验证。
+- 用途：共用组件与主题的现行基线；历史截图不代表当前实现。第 33 轮[组件统一需求](../33-home-report-readability/requirements.md)与[交互稿](../33-home-report-readability/design.html)已确认并接入 SwiftUI，iOS CI 构建与测试已通过，真机效果待验证。
 - 参考：[awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的 `apple` 条目 · Apple Human Interface Guidelines · Liquid Glass（iOS 26）
 
 ## 1. 视觉基调

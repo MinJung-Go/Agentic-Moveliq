@@ -25,9 +25,9 @@
 - [x] 纯逻辑 **16/16**：10 项报告分段/展示名称测试、6 项既有首页分流测试。实际 Swift 6.0.3 Linux 执行，见 `/tmp/moveliq-readability-tests.log`。
 - [x] 语音状态 **9/9**：草稿追加、取消、最终结果、录音中发送、旧回调隔离、失败重试和提示清理。Linux 临时 harness 使用 Combine/音频替身，仅覆盖 VoiceInput 状态，不覆盖 SwiftUI 发布订阅和真实音频。日志 `/tmp/moveliq-round33-voice-tests.log`。
 - [x] App、测试与 Widget 共 192 个 Swift 文件语法解析通过，`git diff --check` 和既有资源清理检查通过；语法检查不等同于 iOS 类型检查/构建。
-- [ ] iOS CI 构建及完整原生测试：2026-10-15 用户授权 push 和 IPA；准备通过功能分支 workflow_dispatch（build_ipa=true）执行。新增 2 项 RecordItem/SwiftData 集成测试随 CI 执行，提交号和结果待回填。
+- [x] iOS CI 构建及完整原生测试：提交 `3be6cb8e1f48fc78a49ecb6641a281c18e2c60a5`，[运行 38704542009](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009)。Xcode 构建成功，完整原生 XCTest **501/501**；新增 2 项 RecordItem/SwiftData 集成测试通过，Apple 音频专项另 **28/28**。
 - [ ] 模拟器/真机：320/390/430pt、浅深色、动态字体、VoiceOver、键盘安全区与焦点、相册取消/失败、真实语音权限/中断/转写和实时通话入口复验。
-- [ ] 按用户授权提交/push，构建 0.5.15（36）IPA；完成后记录构建链接。
+- [x] 功能代码已提交/push（`3be6cb8`）；0.5.15（36）IPA 已归档并上传，[下载产物](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009/artifacts/11958669876)。[CI 全部成功](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009)，安装需通过 AltStore/Sideloadly 等重签名。
 
 可复跑纯逻辑：`python3 scripts/test_readability_portable.py`；Linux 自定义 Swift 路径可通过 `SWIFT=/path/to/swift` 传入。新增/修改的 XCTest 也由既有 iOS 测试目标自动收录。
 
@@ -45,6 +45,6 @@
 
 ## 状态与边界
 
-分支 `feat/home-report-readability`，基线 main `05aaee2`。已修改 App、适用测试和文档；Service、云端、账号与数据结构均未改。用户已授权提交/push 和 0.5.15（36）IPA；CI 构建与真机验证结果分别记录，不把 HTML 或 Linux 检查表述为原生验收。
+分支 `feat/home-report-readability`，基线 main `05aaee2`。已修改 App、适用测试和文档；Service、云端、账号与数据结构均未改。用户已授权提交/push 和 0.5.15（36）IPA；CI 构建、测试与 IPA 归档均通过，真机验证结果另行记录，不把 HTML 或 Linux 检查表述为原生验收。
 
 登录/搜索/数字表单、系统 Form、系统确认框、通话控制保留场景差异。未重新设计其他页面和空态体系，也未恢复本地模型。
