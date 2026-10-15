@@ -28,6 +28,7 @@
 - [x] iOS CI 构建及完整原生测试：提交 `3be6cb8e1f48fc78a49ecb6641a281c18e2c60a5`，[运行 38704542009](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009)。Xcode 构建成功，完整原生 XCTest **501/501**；新增 2 项 RecordItem/SwiftData 集成测试通过，Apple 音频专项另 **28/28**。
 - [ ] 模拟器/真机：320/390/430pt、浅深色、动态字体、VoiceOver、键盘安全区与焦点、相册取消/失败、真实语音权限/中断/转写和实时通话入口复验。
 - [x] 功能代码已提交/push（`3be6cb8`）；0.5.15（36）IPA 已归档并上传，[下载产物](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009/artifacts/11958669876)。[CI 全部成功](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38704542009)，安装需通过 AltStore/Sideloadly 等重签名。
+- [x] 下载产物复核：IPA ZIP CRC 通过，App/Widget 均为 **0.5.15（36）**，服务地址为 `https://moveliq.work/api`；IPA 8,822,518 bytes，SHA-256 `e038df097a75a44d0ed81a97ad1321e34a77bbcb7a26acf8c4afde0a3d3fde37`。
 
 可复跑纯逻辑：`python3 scripts/test_readability_portable.py`；Linux 自定义 Swift 路径可通过 `SWIFT=/path/to/swift` 传入。新增/修改的 XCTest 也由既有 iOS 测试目标自动收录。
 
