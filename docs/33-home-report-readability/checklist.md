@@ -93,3 +93,19 @@
 - [x] 提交并 push 当前 R6 功能与文档：`92262e61688f7542d0f8ca78837916e1b1a3b094`；`v0.5.16` 已触发[本次构建 38715725040](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)。
 - [x] `92262e61688f7542d0f8ca78837916e1b1a3b094` 的[本次 CI](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)原生构建及完整 XCTest **504/504** 通过，Apple 音频专项另 **28/28**。新增真实长名称、完整食物名搜索/辅助朗读及非饮食搜索测试均通过；侧载权限嵌入校验通过。原生日志 `/tmp/moveliq-0.5.16-build-log/build.log`，音频日志 `/tmp/moveliq-0.5.16-audio.log`。
 - [x] [本次 CI 全部成功](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)，[下载 0.5.16（37）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040/artifacts/11964063963)。已实际下载并验证 ZIP CRC、App/Widget 版本一致、`https://moveliq.work/api` 服务地址、MLX Metal 库和许可、未打包模型权重及旧动作资源。IPA **8,840,124 bytes**，SHA-256 `5411c0e6df458cfab9a636dbda870dbaf5b659f7bc8191a5751e888dcd7ba8af`；本地文件 `/tmp/moveliq-0.5.16-37/KeepKeep-unsigned.ipa`。安装仍需 AltStore/Sideloadly 等侧载工具重签名。
+
+## R7 输入栏内部对齐修复
+
+- [x] 用户已确认是空白/单行时「＋」与“聊聊…”上下未居中；确认范围与当前修复一致。记录线索但不将其当作已经验证的真机根因。
+- [x] 同步当前 HTML 的单行居中约束，保留多行靠下和原有输入状态；更新现有两张总览，未新增永久稿件。
+- [x] 共享 MessageComposer：空文本显式 center、TextField 内容理想高度与最小 44pt 居中范围，照片/实时菜单统一外部 44pt，实时菜单 plain + 隐藏指示符；原有入口及回调保留。
+- [x] 原型三宽度 × 浅深色 × 常规/大字体 × 八状态 × 三入口，共 **288** 个预览通过：单行文字/图标垂直中心误差小于 1px，多行保持底对齐，按钮 44pt、无横向溢出；实时菜单可打开并触发演示动作。日志 `/tmp/moveliq-r7-composer-check.log`。修改后的 Swift 文件语法解析和 `git diff --check` 通过。本次均为 HTML/语法验证，不沿用 0.5.16 的原生测试结果。
+- [ ] 原生构建与全量回归，结果记录在下方 0.5.17（38）发布项。
+- [ ] 真机：单行、自动换行、4 行以上滚动、大字体、键盘、照片和实时菜单。
+
+## 0.5.17（38）IPA 发布
+
+- [x] 用户再次“打 IPA”授权提交/push 本次对齐修复并按既有 Actions 流程打包；当前分支不变，App 与 Widget 同步升级至 0.5.17（38）。
+- [ ] 提交、push 并以 v0.5.17 tag 触发构建，记录源码提交与 CI 链接。
+- [ ] 本次原生构建、全量 XCTest、音频专项及设备归档通过；不沿用上一版结果。
+- [ ] 实际下载核验 App/Widget 版本、服务地址、ZIP 完整性与 IPA SHA-256，回填下载链接。

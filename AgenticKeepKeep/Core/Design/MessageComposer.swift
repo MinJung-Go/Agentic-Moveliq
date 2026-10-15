@@ -93,14 +93,16 @@ struct MessageComposer: View {
     }
 
     private var field: some View {
-        HStack(alignment: .bottom, spacing: 0) {
+        HStack(alignment: text.isEmpty ? .center : .bottom, spacing: 0) {
             accessoryButton
             TextField(placeholder, text: $text, axis: .vertical)
                 .font(Theme.Font.body)
                 .lineLimit(1...4)
                 .focused(focus)
                 .disabled(dictation.active)
-                .frame(minHeight: 44)
+                // 按实际行数决定高度，避免空白多行 TextField 被父容器拉高。
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44, alignment: .center)
                 .accessibilityLabel(placeholder)
                 .accessibilityIdentifier("\(identifier).draft")
 
@@ -156,6 +158,7 @@ struct MessageComposer: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
             .foregroundStyle(accessoryTint)
             .disabled(isBusy || dictation.active || photoItem != nil)
             .accessibilityLabel("添加照片")
@@ -172,6 +175,9 @@ struct MessageComposer: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .frame(width: 44, height: 44)
             .foregroundStyle(accessoryTint)
             .disabled(isBusy || dictation.active)
             .accessibilityLabel("更多操作")
