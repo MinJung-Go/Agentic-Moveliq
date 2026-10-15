@@ -21,6 +21,9 @@ struct MessageComposer: View {
     var onStop: (() -> Void)? = nil
     let identifier: String
     var background: Color = Theme.conversationCanvas
+    var horizontalInset: CGFloat = Theme.Spacing.l
+    var fieldBackground: Color = Theme.chip
+    var accessoryTint: Color = Theme.accent
     var onSend: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -69,7 +72,7 @@ struct MessageComposer: View {
             }
             field
         }
-        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.horizontal, horizontalInset)
         .padding(.vertical, Theme.Spacing.s)
         .background(background)
         .task(id: photoItem) { await loadPhoto() }
@@ -137,7 +140,7 @@ struct MessageComposer: View {
             }
         }
         .padding(Theme.Spacing.xs)
-        .background(Theme.chip, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .background(fieldBackground, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
     @ViewBuilder
@@ -153,7 +156,7 @@ struct MessageComposer: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(accessoryTint)
             .disabled(isBusy || dictation.active || photoItem != nil)
             .accessibilityLabel("添加照片")
         case .realtime(let open):
@@ -169,7 +172,7 @@ struct MessageComposer: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(accessoryTint)
             .disabled(isBusy || dictation.active)
             .accessibilityLabel("更多操作")
         }

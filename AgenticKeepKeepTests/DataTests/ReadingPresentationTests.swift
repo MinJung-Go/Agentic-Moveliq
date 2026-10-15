@@ -47,9 +47,18 @@ final class ReadingPresentationTests: XCTestCase {
         XCTAssertEqual(ReportTextLayout.paragraphs(in: body), [body])
     }
 
-    func testStructuredFoodNamesUseAtMostTwoNamesAndExactItemCount() {
-        XCTAssertEqual(RecordDisplayName.meal(names: ["蜜橘", "柑橘", "米饭"], fallback: "旧摘要"), "蜜橘、柑橘 等 3 项")
+    func testStructuredFoodNamesUseFirstNameAndExactItemCount() {
+        XCTAssertEqual(RecordDisplayName.meal(names: ["蜜橘", "柑橘", "米饭"], fallback: "旧摘要"), "蜜橘 等 3 项")
         XCTAssertEqual(RecordDisplayName.meal(names: ["牛肉面"], fallback: "旧摘要"), "牛肉面")
+    }
+
+    func testScreenshotMealKeepsNameAndCountSeparateWithoutJoiningLongSecondName() {
+        let names = ["蜜橘 / 柑橘", "维他港式奶茶（原味，250ml）"]
+        let result = RecordDisplayName.mealPresentation(names: names, fallback: "旧摘要")
+        XCTAssertEqual(result.name, "蜜橘 / 柑橘")
+        XCTAssertEqual(result.itemCount, 2)
+        XCTAssertEqual(result.text, "蜜橘 / 柑橘 等 2 项")
+        XCTAssertEqual(names[1], "维他港式奶茶（原味，250ml）")
     }
 
     func testOnlyCompleteLongTrailingFoodAnnotationIsCompacted() {
@@ -66,6 +75,9 @@ final class ReadingPresentationTests: XCTestCase {
     func testMissingStructuredNamesKeepOriginalFallback() {
         for names in [[], [""], ["米饭", " "]] {
             XCTAssertEqual(RecordDisplayName.meal(names: names, fallback: "完整原始描述（需核对）"), "完整原始描述（需核对）")
+            let result = RecordDisplayName.mealPresentation(names: names, fallback: "原始摘要 等 2 项")
+            XCTAssertEqual(result.name, "原始摘要 等 2 项")
+            XCTAssertEqual(result.itemCount, 1, "回退完整摘要时不能额外拼接项数")
         }
     }
 }

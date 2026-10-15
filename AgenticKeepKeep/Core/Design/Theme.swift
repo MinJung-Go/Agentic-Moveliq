@@ -26,9 +26,21 @@ enum Theme {
     static let canvas = surface(light: .systemGroupedBackground, dark: 0x161719)
     /// 聊天与报告正文：浅色白底、深色炭黑。
     static let conversationCanvas = surface(light: .systemBackground, dark: 0x161719)
-    /// 首页局部表面：与课程容器建立柔和层次，不改聊天及全局卡片。
-    static let homeCanvas = surface(light: UIColor(red: 250/255.0, green: 250/255.0, blue: 252/255.0, alpha: 1), dark: 0x161719)
-    static let homePanel = surface(light: UIColor(red: 240/255.0, green: 240/255.0, blue: 244/255.0, alpha: 1), dark: 0x232528)
+    /// 第 33 轮第五版：首页与记录页的局部样式，不改聊天、报告及全局卡片。
+    enum Journal {
+        static let canvas = Theme.surface(light: 0xFFFEFA, dark: 0x191A18)
+        static let panel = Theme.surface(light: 0xF3F0E8, dark: 0x262723)
+        static let label = Theme.surface(light: 0x272723, dark: 0xF1F0E9)
+        static let secondary = Theme.surface(light: 0x65645F, dark: 0xB9B9AF)
+        static let metadata = Theme.surface(light: 0x77746D, dark: 0xA4A59A)
+        static let line = Theme.surface(light: 0xE8E5DE, dark: 0x363830)
+        static let fill = Theme.surface(light: 0xEFEDE7, dark: 0x2B2D27)
+        static let action = Theme.surface(light: 0x986219, dark: 0xE1B373)
+        static let inset: CGFloat = 24
+        static let timeWidth: CGFloat = 42
+        static let columnGap: CGFloat = 16
+        static let panelRadius: CGFloat = 16
+    }
     /// 卡片：浅色白底，深色 #232528。
     static let card = surface(light: .secondarySystemGroupedBackground, dark: 0x232528)
     /// 卡片内嵌块：指标块、字段行、缩略图、思考区容器（浅色 `#F2F2F7` / 深色 `#2C2E32`）
@@ -44,6 +56,12 @@ enum Theme {
                           blue: CGFloat(dark & 0xFF) / 255, alpha: 1)
                 : light.resolvedColor(with: trait)
         })
+    }
+
+    private static func surface(light: UInt32, dark: UInt32) -> Color {
+        surface(light: UIColor(red: CGFloat((light >> 16) & 0xFF) / 255,
+                               green: CGFloat((light >> 8) & 0xFF) / 255,
+                               blue: CGFloat(light & 0xFF) / 255, alpha: 1), dark: dark)
     }
 
     /// 0.5pt 分隔线与描边：深色用白 8.5%、浅色用黑 5.5%。
@@ -94,7 +112,7 @@ enum Theme {
 
     // MARK: - 字体角色
     //
-    // 字重阶梯只有 400 / 600 / 700 —— **不使用 500**，中间强调一律 600。
+    // 通用字重为 400 / 600 / 700；第 33 轮 Journal 名称使用已确认的 500。
     // 用系统语义字号而非写死 point size，以跟随动态字体。
     // **一律不设负字距**：界面以中文为主，汉字字面本来就是等宽方块，收字距会让笔画相贴。
 

@@ -2,12 +2,24 @@ import Foundation
 
 /// 只生成列表展示名；完整名称与说明仍来自原记录，不改写数据。
 enum RecordDisplayName {
-    static func meal(names: [String], fallback: String) -> String {
-        guard !names.isEmpty, names.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
-            return fallback
+    struct Presentation: Equatable {
+        let name: String
+        let itemCount: Int
+
+        var text: String {
+            itemCount > 1 ? "\(name) 等 \(itemCount) 项" : name
         }
-        let title = names.prefix(2).map(compactFoodName).joined(separator: "、")
-        return names.count > 1 ? "\(title) 等 \(names.count) 项" : title
+    }
+
+    static func meal(names: [String], fallback: String) -> String {
+        mealPresentation(names: names, fallback: fallback).text
+    }
+
+    static func mealPresentation(names: [String], fallback: String) -> Presentation {
+        guard !names.isEmpty, names.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            return Presentation(name: fallback, itemCount: 1)
+        }
+        return Presentation(name: compactFoodName(names[0]), itemCount: names.count)
     }
 
     static func compactFoodName(_ name: String) -> String {

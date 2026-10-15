@@ -124,6 +124,6 @@ Moveliq 品牌统一、Milo 默认首页与统一记录／聊天入口。
 
 App 默认连接 https://moveliq.work/api，移除 HTTP 放行；服务端独立部署。[需求](31-domain-https/requirements.md) · [清单](31-domain-https/checklist.md)。
 
-## 第 33 轮 · 首页与分析报告可读性（CI 已通过，待真机验收）
+## 第 33 轮 · 首页与分析报告可读性（0.5.15 已发布，第五版代码已接入）
 
-改善首页模块层次、记录照片/AI 标签对齐及分析报告长正文排版，统一消息输入栏和基础组件。设计已确认并接入 App；iOS CI 构建与 501 项单测通过，真机验证待完成。[需求](33-home-report-readability/requirements.md) · [清单](33-home-report-readability/checklist.md) · [设计稿](33-home-report-readability/design.html)。
+改善首页模块层次、记录照片/AI 标签对齐及分析报告长正文排版，统一消息输入栏和基础组件。设计已确认并接入 App；0.5.15 的 iOS CI 构建与 501 项单测通过。已收到记录行真机反馈，第三、四版未获确认；第五版及 24pt 对齐细化已确认并接入 App：时间栏与连续内容栏、暖色页面和完整名称搜索；本次本地逻辑 17/17、193 个 Swift 文件语法解析通过，0.5.16（37）IPA 正在按用户要求发布，原生 CI 与真机结果另记。[需求](33-home-report-readability/requirements.md) · [清单](33-home-report-readability/checklist.md) · [设计稿](33-home-report-readability/design.html)。

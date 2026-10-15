@@ -148,6 +148,35 @@ final class ThemeTests: XCTestCase {
         guard case .neutral? = badge?.tone else { return XCTFail("估算来源应使用中性标注") }
     }
 
+    func testCompactMealStillSearchesAndReadsAllFoodNames() {
+        let meal = MealEntry(note: "下午加餐")
+        let names = ["蜜橘 / 柑橘", "维他港式奶茶（原味，250ml）"]
+        meal.items = names.map { FoodItem(name: $0, calories: 80, isEstimated: false) }
+        let item = RecordItem(payload: .meal(meal))
+        XCTAssertEqual(item.listHeading.name, names[0])
+        XCTAssertEqual(item.listHeading.itemCount, 2)
+        XCTAssertFalse(item.displayTitle.contains("维他"))
+        XCTAssertTrue(item.matchesSearch("维他"))
+        XCTAssertTrue(item.matchesSearch("250ml"))
+        XCTAssertTrue(item.matchesSearch("下午加餐"))
+        XCTAssertTrue(item.matchesSearch(" "))
+        XCTAssertFalse(item.matchesSearch("深蹲"))
+        XCTAssertTrue(item.accessibilityTitle.contains(names[1]))
+        XCTAssertEqual(meal.items.map(\.name), names)
+        XCTAssertEqual(meal.note, "下午加餐")
+        XCTAssertNil(item.badge, "照片/展示精简不应改变估算来源")
+    }
+
+    func testRecordSearchKeepsNotesAndNonMealTitles() {
+        let session = WorkoutSession(title: "Full Body A")
+        XCTAssertTrue(RecordItem(payload: .workout(session)).matchesSearch("body"))
+        let note = RawNote(text: "今天练了深蹲，稍后补组数")
+        let item = RecordItem(payload: .rawNote(note))
+        XCTAssertEqual(item.listHeading.name, note.text)
+        XCTAssertEqual(item.listHeading.itemCount, 1)
+        XCTAssertTrue(item.matchesSearch("稍后补组数"))
+    }
+
     // MARK: - 间距与圆角阶梯
 
     func testSpacingScaleIsBaseEight() {

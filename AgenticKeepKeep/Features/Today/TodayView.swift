@@ -4,6 +4,8 @@ import SwiftData
 /// 今日：紧凑问候、课程行动、记录列表与共用消息输入栏。
 struct TodayView: View {
 
+    @ScaledMetric(relativeTo: .subheadline) private var greetingDetailSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var planTitleSize: CGFloat = 16
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var appState: AppState
@@ -80,22 +82,25 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                VStack(alignment: .leading, spacing: 22) {
                     greeting.staggeredAppear(0)
                     planSection.staggeredAppear(1)
                     recordsSection.staggeredAppear(2)
                     if !snapshots.isEmpty { healthSection }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, Theme.Spacing.s)
+                .padding(.horizontal, Theme.Journal.inset)
+                .padding(.top, Theme.Spacing.l)
                 .padding(.bottom, Theme.Spacing.l)
             }
             .contentShape(Rectangle())
             .simultaneousGesture(TapGesture().onEnded { isInputFocused = false })
             .scrollDismissesKeyboard(.immediately)
-            .background(Theme.homeCanvas)
-            .toolbarBackground(Theme.homeCanvas, for: .navigationBar)
+            .background(Theme.Journal.canvas)
+            .foregroundStyle(Theme.Journal.label)
+            .tint(Theme.Journal.action)
+            .toolbarBackground(Theme.Journal.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Theme.Journal.canvas, for: .tabBar)
             .navigationTitle("Moveliq")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -126,21 +131,22 @@ struct TodayView: View {
     // MARK: - 问候
 
     private var greeting: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: Theme.Spacing.m) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(Format.day(.now))
                         .font(Theme.Font.caption)
-                        .foregroundStyle(Theme.secondaryLabel)
+                        .foregroundStyle(Theme.Journal.metadata)
                     Text(Format.greeting())
-                        .font(.title2.weight(.semibold))
+                        .font(.title.weight(.semibold))
                     Text("今天也按自己的节奏来。")
-                        .font(Theme.Font.footnote)
-                        .foregroundStyle(Theme.secondaryLabel)
+                        .font(.system(size: greetingDetailSize))
+                        .foregroundStyle(Theme.Journal.secondary)
                 }
                 Spacer(minLength: 0)
-                MiloAvatar(size: 72)
+                MiloAvatar(size: 76)
             }
+            .frame(minHeight: 98)
             ViewThatFits(in: .horizontal) {
                 HStack { quickChat("我有点累"); quickChat(plans.contains { $0.isActive } ? "看看今天怎么练" : "一起制定训练计划") }
                 VStack(alignment: .leading) { quickChat("我有点累"); quickChat(plans.contains { $0.isActive } ? "看看今天怎么练" : "一起制定训练计划") }
@@ -152,7 +158,11 @@ struct TodayView: View {
         Button { dictation.finish(); chatEntry = ChatEntry(text: text) } label: {
             Text(text).font(Theme.Font.footnote)
                 .padding(.horizontal, 14).frame(minHeight: 44)
-                .background(Theme.chip, in: Capsule())
+                .foregroundStyle(Theme.Journal.secondary)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        .strokeBorder(Theme.Journal.line, lineWidth: 1)
+                }
         }.buttonStyle(.plain)
     }
 
@@ -304,7 +314,7 @@ struct TodayView: View {
         if let day = todayPlanDay {
             let plan = day.plan
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                SectionHeader(text: "今日课程", trailing: weekLabel(plan))
+                journalHeader("今日课程", trailing: weekLabel(plan))
                 HStack(alignment: .top, spacing: Theme.Spacing.m) {
                     // 状态色条：今天该练什么，一眼能看出状态
                     Capsule()
@@ -357,31 +367,35 @@ struct TodayView: View {
                     }
                 }
                 .padding(Theme.Spacing.l)
-                .background(Theme.homePanel, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .background(Theme.Journal.panel, in: RoundedRectangle(cornerRadius: Theme.Journal.panelRadius))
             }
         } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                SectionHeader(text: "今日课程")
+                journalHeader("今日课程")
                 Button {
                     appState.selectedTab = .plan
                 } label: {
                     HStack(spacing: Theme.Spacing.m) {
-                        SymbolChip("calendar", tint: Theme.accent)
+                        Image(systemName: "calendar")
+                            .font(.system(size: 19))
+                            .foregroundStyle(Theme.Journal.action)
+                            .frame(width: 30, height: 30)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(plans.contains { $0.isActive } ? "今天没有安排训练" : "还没有训练计划")
-                                .font(Theme.Font.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
+                                .font(.system(size: planTitleSize, weight: .medium))
+                                .foregroundStyle(Theme.Journal.label)
                             Text(plans.contains { $0.isActive } ? "查看课程表，按自己的节奏来" : "和 \(displayName) 一起安排第一份计划")
-                                .font(Theme.Font.caption)
-                                .foregroundStyle(Theme.secondaryLabel)
+                                .font(Theme.Font.footnote)
+                                .foregroundStyle(Theme.Journal.secondary)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
                             .font(Theme.Font.footnote.weight(.semibold))
-                            .foregroundStyle(Theme.tertiaryLabel)
+                            .foregroundStyle(Theme.Journal.metadata)
                     }
                     .padding(Theme.Spacing.l)
-                    .background(Theme.homePanel, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                    .frame(minHeight: 88)
+                    .background(Theme.Journal.panel, in: RoundedRectangle(cornerRadius: Theme.Journal.panelRadius))
                 }
                 .buttonStyle(.plain)
             }
@@ -403,12 +417,27 @@ struct TodayView: View {
         return "第 \(week) / \(plan.weeks) 周"
     }
 
+    private func journalHeader(_ title: String, trailing: String? = nil) -> some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(Theme.Journal.label)
+            Spacer(minLength: 0)
+            if let trailing {
+                Text(trailing)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Journal.metadata)
+                    .monospacedDigit()
+            }
+        }
+    }
+
     // MARK: - 今日已记录
 
     private var recordsSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack {
-                SectionHeader(text: "今日记录", trailing: items.isEmpty ? nil : "\(items.count) 条")
+                journalHeader("今日记录", trailing: items.isEmpty ? nil : "\(items.count) 条")
                 Button("查看全部") { appState.selectedTab = .records }
                     .font(Theme.Font.caption).frame(minHeight: 44)
             }
@@ -430,7 +459,7 @@ struct TodayView: View {
                             RecordRow(item: item)
                         }
                         .buttonStyle(.plain)
-                        if index < min(items.count, 3) - 1 { RowDivider() }
+                        if index < min(items.count, 3) - 1 { RecordRowDivider() }
                     }
                 }
             }
@@ -447,7 +476,10 @@ struct TodayView: View {
             focus: $isInputFocused,
             placeholder: "和 \(displayName) 说说…",
             identifier: "today",
-            background: Theme.homeCanvas,
+            background: Theme.Journal.canvas,
+            horizontalInset: Theme.Journal.inset,
+            fieldBackground: Theme.Journal.fill,
+            accessoryTint: Theme.Journal.action,
             onSend: routeInput
         )
     }
@@ -539,79 +571,6 @@ struct StatTile: View {
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, 11)
         .background(Theme.cardNested, in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
-    }
-}
-
-/// 紧凑记录行：照片与类型图标共用左列，来源与时间使用固定右列。
-struct RecordRow: View {
-    let item: RecordItem
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .caption) private var metadataWidth: CGFloat = 64
-
-    var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            VStack(spacing: 2) {
-                RecordIcon(kind: item.kind)
-                if item.hasPhoto {
-                    Image(systemName: "camera.fill")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.secondaryLabel)
-                        .accessibilityLabel("附有照片")
-                }
-            }
-            .frame(width: 36)
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text(item.displayTitle)
-                    .font(Theme.Font.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(Theme.Font.footnote)
-                        .foregroundStyle(item.isPendingNote ? Theme.warning : Theme.secondaryLabel)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if dynamicTypeSize.isAccessibilitySize { metadata }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            if !dynamicTypeSize.isAccessibilitySize {
-                metadata.frame(width: metadataWidth, alignment: .trailing)
-            }
-        }
-        .padding(.vertical, Theme.Spacing.m)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
-    }
-
-    private var metadata: some View {
-        VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: Theme.Spacing.xs) {
-            Text(Format.time(item.date))
-                .font(Theme.Font.caption)
-                .foregroundStyle(Theme.secondaryLabel)
-                .monospacedDigit()
-            if let badge = item.badge {
-                if item.isPendingNote { Badge(badge.text, tone: badge.tone) }
-                else { RecordSourceLabel(text: badge.text) }
-            }
-            if !item.isEditable {
-                Label("只读", systemImage: "lock.fill")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.secondaryLabel)
-            }
-        }
-        .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .trailing)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var accessibilitySummary: String {
-        // 展示名可以精简，VoiceOver 和详情仍提供完整原名。
-        [item.title, item.subtitle, Format.time(item.date), item.badge?.text,
-         item.hasPhoto ? "附有照片" : nil, item.isEditable ? nil : "只读"]
-            .compactMap { $0 }.joined(separator: "，")
     }
 }
 
