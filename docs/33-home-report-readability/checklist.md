@@ -1,6 +1,6 @@
 # 首页、报告与输入栏优化清单
 
-当前：0.5.15 已发布；用户真机反馈后的第五版已获确认并完成本地代码接入，见末尾 R6。0.5.15 的 CI 是历史结果；R6 本次准备发布 0.5.16（37），CI 与 IPA 结果见末尾。
+当前：0.5.15 已发布；用户真机反馈后的第五版已获确认并完成本地代码接入，见末尾 R6。0.5.15 的 CI 是历史结果；R6 的 0.5.16（37）已打包，CI 与 IPA 结果见末尾。
 
 ## 需求与设计
 
@@ -67,7 +67,7 @@
 - [x] 重画首页与记录页：暖白底、克制字重、统一留白、轻量快捷入口；完整名称搜索、详情与既有业务入口保留。
 - [x] 第五版浏览器 **15/15**：三宽度 × 浅深色 × 常规/大字体 × 五状态（60 组合 / 120 页面预览），时间与内容分栏/对齐、首页与记录页共用行、完整名称搜索/详情、类别筛选、未知营养/来源、44pt 筛选范围、既有输入稿与脚本错误检查通过。浅深色已人工检查，仅更新现有两张总览；日志 `/tmp/moveliq-records-v5-check.log`。这些结果只验证 HTML，不代替审美确认或原生验收。
 - [x] 2026-10-15 用户“可以，开发吧”确认第五版与 24pt 对齐细化，在当前分支接入 App。
-- [ ] 原生回归、CI 与真机复核；提交/push/IPA 需另获明确授权。
+- [x] 后续用户“打 IPA”已授权发布；原生 CI/IPA 已完成，真机复核另列于下方。
 
 ## 第五版对齐细化
 
@@ -80,16 +80,16 @@
 - [x] 共享 [RecordRow](../../AgenticKeepKeep/Core/Design/RecordRow.swift)：时间栏、第一项名称与独立项数样式、完整摘要/来源。极大辅助功能字号时将时间移到上方，分隔线同步跟随。照片仅读 hasPhoto。
 - [x] 首页：局部暖白/深色主题、轻描边快捷入口、低对比课程容器，正文与输入框统一 24pt。已有课程状态、进度、开始/继续训练、语音和照片路径保留；聊天/记一笔默认 16pt 未变。
 - [x] 记录页：移除拼接白卡，24pt 搜索/列表边距，32pt 视觉/至少 44pt 操作的筛选、日期分组；仍用原生 List 和 swipeActions。整行按钮进入原详情，避免默认 disclosure 额外挤占内容宽度。
-- [x] 搜索覆盖所有食物名称、原有摘要和饮食备注，VoiceOver 保留完整食物名；列表精简不修改持久化内容。新增 1 项真实长名称展示逻辑回归、更新既有项数/空名回退测试；另新增 2 项原生模型搜索/朗读回归（待 iOS 执行）。
+- [x] 搜索覆盖所有食物名称、原有摘要和饮食备注，VoiceOver 保留完整食物名；列表精简不修改持久化内容。新增 1 项真实长名称展示逻辑回归、更新既有项数/空名回退测试；另新增 2 项原生模型搜索/朗读回归，本次 iOS CI 已通过。
 - [x] 本次 Linux Swift 6.0.3 实际执行：展示/报告 **11/11**、首页分流 **6/6**，合计 **17/17**（`/tmp/moveliq-r6-readability-tests.log`）；App/测试/Widget **193** 个 Swift 文件语法解析通过，后续 UI 增量也已解析（`/tmp/moveliq-r6-swift-parse.log`）。资源清理检查和 `git diff --check` 通过。语法解析不代表 SwiftUI 类型检查、SwiftData 集成或 iOS 构建通过。
-- [ ] iOS 原生构建、全量测试与 0.5.16（37）IPA 归档；本次用户“打 IPA”已授权提交、push 与触发构建。
+- [x] iOS 原生构建、全量测试与 0.5.16（37）IPA 归档已完成；本次用户“打 IPA”已授权提交、push 与触发构建。
 - [ ] 真机：浅深色、320/390/430pt、辅助功能字号、搜索/删除、照片/语音/键盘。
 
-本次构建限制：当前工具环境 `list_sims` 返回 `spawn xcrun ENOENT`，没有 Xcode/iOS SDK，因此新增的 2 项原生模型测试、SwiftUI 构建、原生导航/滑动删除和真实键盘/辅助功能效果尚未验证。本地验证与 iOS 构建结果分别记录，Service 与云端未改。
+本次构建限制：当前工具环境 `list_sims` 返回 `spawn xcrun ENOENT`，没有 Xcode/iOS SDK，因此新增的 2 项原生模型测试和 SwiftUI 构建现已通过 GitHub Actions 验证；原生导航/滑动删除和真实键盘/辅助功能效果仍待装机复核。本地验证与 iOS 构建结果分别记录，Service 与云端未改。
 
 ## 0.5.16（37）IPA 发布
 
 - [x] 用户“打 IPA”确认按现有 GitHub Actions 链路发布；保持当前功能分支，App/Widget 同步升级至 0.5.16（37）。
-- [ ] 提交并 push 当前 R6 功能与文档，创建 v0.5.16 tag 触发构建。
-- [ ] 原生构建及完整单测通过；记录精确提交号、CI 地址与实际测试数量。
-- [ ] IPA 归档并核验包内 App/Widget 版本、服务地址和 ZIP 完整性，回填下载入口。
+- [x] 提交并 push 当前 R6 功能与文档：`92262e61688f7542d0f8ca78837916e1b1a3b094`；`v0.5.16` 已触发[本次构建 38715725040](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)。
+- [x] `92262e61688f7542d0f8ca78837916e1b1a3b094` 的[本次 CI](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)原生构建及完整 XCTest **504/504** 通过，Apple 音频专项另 **28/28**。新增真实长名称、完整食物名搜索/辅助朗读及非饮食搜索测试均通过；侧载权限嵌入校验通过。原生日志 `/tmp/moveliq-0.5.16-build-log/build.log`，音频日志 `/tmp/moveliq-0.5.16-audio.log`。
+- [x] [本次 CI 全部成功](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040)，[下载 0.5.16（37）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38715725040/artifacts/11964063963)。已实际下载并验证 ZIP CRC、App/Widget 版本一致、`https://moveliq.work/api` 服务地址、MLX Metal 库和许可、未打包模型权重及旧动作资源。IPA **8,840,124 bytes**，SHA-256 `5411c0e6df458cfab9a636dbda870dbaf5b659f7bc8191a5751e888dcd7ba8af`；本地文件 `/tmp/moveliq-0.5.16-37/KeepKeep-unsigned.ipa`。安装仍需 AltStore/Sideloadly 等侧载工具重签名。

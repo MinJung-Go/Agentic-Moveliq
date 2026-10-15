@@ -1,12 +1,12 @@
 # Moveliq 设计系统（DESIGN.md）
 
-- 版本：2.1 · 2026-10-15（纠正历史文档与当前 Theme 的差异）
-- 用途：共用组件与主题的现行基线；历史截图不代表当前实现。第 33 轮[组件统一需求](../33-home-report-readability/requirements.md)与[交互稿](../33-home-report-readability/design.html)已确认并接入 SwiftUI；0.5.15 的 CI 已通过，后续 R6 的原生 CI 与真机验证独立记录。
+- 版本：2.2 · 2026-10-15（纠正历史文档与当前 Theme 的差异）
+- 用途：共用组件与主题的现行基线；历史截图不代表当前实现。第 33 轮[组件统一需求](../33-home-report-readability/requirements.md)与[交互稿](../33-home-report-readability/design.html)已确认并接入 SwiftUI；0.5.15 的 CI 已通过，后续 R6 的原生 CI 与真机验证独立记录于本轮清单。
 - 参考：[awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的 `apple` 条目 · Apple Human Interface Guidelines · Liquid Glass（iOS 26）
 
 ## 第 33 轮 R6 局部应用（第五版已确认）
 
-2026-10-15 用户确认第五版及首页 24pt 对齐细化，已接入代码；本次原生 CI 与真机效果待验证，下文通用规则仍适用于其他页面。R6 局部差异如下：
+2026-10-15 用户确认第五版及首页 24pt 对齐细化，已接入代码；本次原生构建和 504 项 XCTest 已通过，IPA 结果见本轮清单，真机效果待验证；下文通用规则仍适用于其他页面。R6 局部差异如下：
 
 - 首页与记录页使用 `Theme.Journal`：近白暖底（浅 `#FFFEFA` / 深 `#191A18`）、课程表面（`#F3F0E8` / `#262723`），正文、次级文字、来源和描边各有对应浅深色值。不改变聊天、报告、全局 card 或 RecordKind 语义色映射。
 - 页面与首页输入栏外边距为 24pt，课程容器圆角 16pt。首页快捷对话为 12pt 圆角的中性细描边按钮；不将描边推广到内容卡片。
