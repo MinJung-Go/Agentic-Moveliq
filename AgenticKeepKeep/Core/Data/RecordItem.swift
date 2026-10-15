@@ -66,6 +66,12 @@ struct RecordItem: Identifiable {
         }
     }
 
+    /// 列表用短名称；详情与辅助朗读仍使用完整 title。
+    var displayTitle: String {
+        guard case .meal(let meal) = payload else { return title }
+        return RecordDisplayName.meal(names: meal.items.map(\.name), fallback: title)
+    }
+
     var subtitle: String? {
         switch payload {
         case .workout(let model):
@@ -123,7 +129,7 @@ struct RecordItem: Identifiable {
         case .workout:
             return nil
         case .meal(let model):
-            return model.containsEstimate ? ("AI 估算", .solid(Theme.accent)) : nil
+            return model.containsEstimate ? ("AI 估算", .neutral) : nil
         case .metric:
             return nil
         case .rawNote(let model):

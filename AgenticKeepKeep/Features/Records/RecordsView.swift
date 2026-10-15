@@ -277,8 +277,8 @@ struct FilterSegments: View {
                     Text(value.displayName)
                         .font(Theme.Font.footnote.weight(.semibold))
                         .foregroundStyle(selection == value ? .primary : Theme.secondaryLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 3)
                         .background {
                             if selection == value {
                                 Capsule()

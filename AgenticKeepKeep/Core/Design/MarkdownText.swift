@@ -14,9 +14,10 @@ struct MarkdownText: View {
     var font: Font = Theme.Font.body
     var foreground: Color = .primary
     var justifiedParagraphs = false
+    var blockSpacing: CGFloat = 6
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: blockSpacing) {
             ForEach(Array(MarkdownFormatter.blocks(from: content).enumerated()), id: \.offset) { _, block in
                 blockView(block)
             }

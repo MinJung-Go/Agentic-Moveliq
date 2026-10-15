@@ -7,6 +7,7 @@ final class VoiceInput: ObservableObject {
     @Published private(set) var active = false
     @Published private(set) var text = ""
     @Published private(set) var notice = ""
+    @Published private(set) var hasError = false
     private let recognizer: VoiceRecognizing
     private var original = ""
     private var generation = UUID()
@@ -17,6 +18,7 @@ final class VoiceInput: ObservableObject {
 
     func begin(draft: String) {
         guard !active else { return }
+        hasError = false
         original = draft; text = draft; notice = "正在准备语音输入…"; active = true
         let token = UUID(); generation = token
         recognizer.onUpdate = { [weak self] value, final in
@@ -28,7 +30,7 @@ final class VoiceInput: ObservableObject {
         }
         recognizer.onFailure = { [weak self] message in
             guard let self, self.generation == token else { return }
-            self.finish(); self.notice = message
+            self.finish(); self.notice = message; self.hasError = true
         }
         startTask = Task { [weak self] in
             guard let self, self.active, self.generation == token, !Task.isCancelled else { return }
@@ -43,6 +45,11 @@ final class VoiceInput: ObservableObject {
         finish()
         notice = ""
         return value
+    }
+    func clearNotice() {
+        guard !active else { return }
+        notice = ""
+        hasError = false
     }
     func finish(cancel: Bool = false) {
         guard active else { return }

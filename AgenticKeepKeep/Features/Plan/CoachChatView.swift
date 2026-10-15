@@ -117,7 +117,6 @@ struct CoachChatView: View {
             })
             .sheet(isPresented: $browser.isPresented) { LocalBrowserView(browser: browser) }
             .onDisappear { dictation.finish(); realtime.end(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
-            .onChange(of: dictation.text) { _, text in inputText = text }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { dictation.finish(); realtime.pause() }
             }
@@ -361,77 +360,18 @@ struct CoachChatView: View {
     // MARK: - 输入
 
     private var inputBar: some View {
-        VStack(spacing: 6) {
-            if dictation.active {
-                HStack {
-                    Text(dictation.notice).font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("取消") { dictation.finish(cancel: true) }
-                }.padding(.horizontal, Theme.Spacing.l)
-            } else if !dictation.notice.isEmpty {
-                Text(dictation.notice).font(.caption).foregroundStyle(.secondary).padding(.horizontal, Theme.Spacing.l)
-            }
-        HStack(spacing: Theme.Spacing.s) {
-            TextField("聊聊训练、饮食或恢复…", text: $inputText, axis: .vertical)
-                .focused($isInputFocused)
-                .disabled(dictation.active)
-                .lineLimit(1...4)
-                .font(Theme.Font.body)
-                .padding(.leading, Theme.Spacing.m)
-                .padding(.vertical, Theme.Spacing.m)
-
-            // 输入栏内保留独立入口，不依赖系统键盘工具栏是否成功显示。
-            if isInputFocused {
-                Button {
-                    isInputFocused = false
-                } label: {
-                    Image(systemName: "keyboard.chevron.compact.down")
-                        .font(.system(size: 20))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.secondaryLabel)
-                .accessibilityLabel("收起键盘")
-                .accessibilityHint("保留已输入的文字")
-                .accessibilityIdentifier("coach.dismissKeyboard")
-            }
-
-            Button {
-                isInputFocused = false
-                if dictation.active { dictation.finish() } else { dictation.begin(draft: inputText) }
-            } label: {
-                Image(systemName: dictation.active ? "stop.circle.fill" : "mic.fill").font(.title3).frame(width: 44, height: 44)
-            }
-            .disabled(isSending)
-            .foregroundStyle(dictation.active ? Color.red : Theme.secondaryLabel)
-            .accessibilityLabel(dictation.active ? "停止语音输入" : "开始语音输入")
-            .accessibilityHint("只转成文字，确认后手动发送")
-            .accessibilityIdentifier("coach.voiceInput")
-            Button(action: openRealtime) {
-                Image(systemName: "phone.fill").font(.title3).frame(width: 44, height: 44)
-            }
-            .disabled(isSending || dictation.active)
-            .accessibilityLabel("实时通话")
-            .accessibilityIdentifier("coach.realtimeCall")
-
-            ChatSendButton(
-                isBusy: isSending,
-                canSend: canSend,
-                onSend: startSend,
-                onStop: stopStreaming
-            )
-        }
-        .padding(Theme.Spacing.xs)
-        .background(Theme.cardNested, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.vertical, Theme.Spacing.s)
-        .background(Theme.conversationCanvas)
-        }
-    }
-
-    private var canSend: Bool {
-        !isSending && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        MessageComposer(
+            text: $inputText,
+            photo: .constant(nil),
+            dictation: dictation,
+            focus: $isInputFocused,
+            placeholder: "聊聊训练、饮食或恢复…",
+            accessory: .realtime(openRealtime),
+            isBusy: isSending,
+            onStop: stopStreaming,
+            identifier: "coach",
+            onSend: startSend
+        )
     }
 
     // MARK: - 动作
@@ -907,12 +847,13 @@ struct AdjustmentDraftCard: View {
                         Text("删除后无法恢复，已有训练记录会保留。")
                             .font(Theme.Font.footnote).foregroundStyle(Theme.secondaryLabel)
                     }
-                    Button(role: destructive ? .destructive : nil) { onAccept(draft) } label: {
-                        Text(destructive ? "确认删除所列内容" : "确认应用修改").frame(maxWidth: .infinity)
+                    if destructive {
+                        Button("确认删除所列内容", role: .destructive) { onAccept(draft) }
+                            .buttonStyle(SecondaryButtonStyle(tint: Theme.danger))
+                    } else {
+                        Button("确认应用修改") { onAccept(draft) }
+                            .buttonStyle(PrimaryButtonStyle())
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(destructive ? Theme.danger : Theme.accent)
-                    .controlSize(.large)
                     Button("不采用", action: onReject).buttonStyle(SecondaryButtonStyle())
                 }
             } else {

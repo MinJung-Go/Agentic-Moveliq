@@ -123,3 +123,7 @@ Moveliq 品牌统一、Milo 默认首页与统一记录／聊天入口。
 ## 第 31 轮 · 已备案域名 HTTPS/WSS
 
 App 默认连接 https://moveliq.work/api，移除 HTTP 放行；服务端独立部署。[需求](31-domain-https/requirements.md) · [清单](31-domain-https/checklist.md)。
+
+## 第 33 轮 · 首页与分析报告可读性（已实施，待 iOS 验证）
+
+改善首页模块层次、记录照片/AI 标签对齐及分析报告长正文排版，统一消息输入栏和基础组件。设计已确认并接入 App；逻辑检查通过，iOS 构建与真机验证待完成。[需求](33-home-report-readability/requirements.md) · [清单](33-home-report-readability/checklist.md) · [设计稿](33-home-report-readability/design.html)。

@@ -129,6 +129,25 @@ final class ThemeTests: XCTestCase {
         }
     }
 
+    func testMealListNameDoesNotRewriteFullRecordOrFoodNames() {
+        let meal = MealEntry(note: "原始备注")
+        let name = "石榴籽（剥好的石榴粒，装于密封袋）"
+        meal.items = [FoodItem(name: name, calories: 220)]
+        let item = RecordItem(payload: .meal(meal))
+        XCTAssertEqual(item.displayTitle, "石榴籽")
+        XCTAssertEqual(item.title, name)
+        XCTAssertEqual(meal.items.first?.name, name)
+        XCTAssertEqual(meal.note, "原始备注")
+    }
+
+    func testEstimatedMealRemainsMarkedAsSourceInList() {
+        let meal = MealEntry()
+        meal.items = [FoodItem(name: "米饭", isEstimated: true)]
+        let badge = RecordItem(payload: .meal(meal)).badge
+        XCTAssertEqual(badge?.text, "AI 估算")
+        guard case .neutral? = badge?.tone else { return XCTFail("估算来源应使用中性标注") }
+    }
+
     // MARK: - 间距与圆角阶梯
 
     func testSpacingScaleIsBaseEight() {

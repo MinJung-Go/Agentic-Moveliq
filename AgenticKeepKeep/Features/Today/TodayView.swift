@@ -1,9 +1,7 @@
-import PhotosUI
-import UIKit
 import SwiftUI
 import SwiftData
 
-/// 今日：概览三环 + 健康快照 + 今日课程 + 今日已记录 + 底部常驻输入条
+/// 今日：紧凑问候、课程行动、记录列表与共用消息输入栏。
 struct TodayView: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -32,7 +30,7 @@ struct TodayView: View {
     /// 今日页输入条里敲的内容（还没提交，所以不进 ViewModel）
     @State private var showsHealthDetails = false
     @State private var draftText = ""
-    @State private var photoItem: PhotosPickerItem?
+    @StateObject private var dictation = VoiceInput()
     @State private var draftPhoto: Data?
     @FocusState private var isInputFocused: Bool
 
@@ -88,22 +86,22 @@ struct TodayView: View {
                     recordsSection.staggeredAppear(2)
                     if !snapshots.isEmpty { healthSection }
                 }
-                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.horizontal, 20)
                 .padding(.top, Theme.Spacing.s)
                 .padding(.bottom, Theme.Spacing.l)
             }
             .contentShape(Rectangle())
             .simultaneousGesture(TapGesture().onEnded { isInputFocused = false })
             .scrollDismissesKeyboard(.immediately)
-            .background(Theme.conversationCanvas)
-            .toolbarBackground(Theme.conversationCanvas, for: .navigationBar)
+            .background(Theme.homeCanvas)
+            .toolbarBackground(Theme.homeCanvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Moveliq")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { BrandMark(size: 28) }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { chatEntry = ChatEntry(text: "") } label: {
+                    Button { dictation.finish(); chatEntry = ChatEntry(text: "") } label: {
                         Image(systemName: "bubble.left.and.bubble.right").frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("与 \(displayName) 的对话")
@@ -122,36 +120,36 @@ struct TodayView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) { inputBar }
             .refreshable { await syncHealth(force: true) }
             .task { await syncHealth(force: false) }
-            .task(id: photoItem) { await attachPhotoFromHome() }
         }
     }
 
     // MARK: - 问候
 
     private var greeting: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.m) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    Text("\(Format.greeting())，今天感觉怎么样？")
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(Format.day(.now))
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.secondaryLabel)
+                    Text(Format.greeting())
                         .font(.title2.weight(.semibold))
-                    Text("我是 \(displayName)，陪你慢慢找到自己的节奏。")
-                        .font(Theme.Font.subheadline).foregroundStyle(Theme.secondaryLabel)
-                        .lineLimit(2)
+                    Text("今天也按自己的节奏来。")
+                        .font(Theme.Font.footnote)
+                        .foregroundStyle(Theme.secondaryLabel)
                 }
                 Spacer(minLength: 0)
-                MiloAvatar(size: 78)
+                MiloAvatar(size: 72)
             }
-            Text(Format.day(.now)).font(Theme.Font.caption).foregroundStyle(Theme.secondaryLabel)
             ViewThatFits(in: .horizontal) {
                 HStack { quickChat("我有点累"); quickChat(plans.contains { $0.isActive } ? "看看今天怎么练" : "一起制定训练计划") }
                 VStack(alignment: .leading) { quickChat("我有点累"); quickChat(plans.contains { $0.isActive } ? "看看今天怎么练" : "一起制定训练计划") }
             }
         }
-        .padding(.vertical, Theme.Spacing.m)
     }
 
     private func quickChat(_ text: String) -> some View {
-        Button { chatEntry = ChatEntry(text: text) } label: {
+        Button { dictation.finish(); chatEntry = ChatEntry(text: text) } label: {
             Text(text).font(Theme.Font.footnote)
                 .padding(.horizontal, 14).frame(minHeight: 44)
                 .background(Theme.chip, in: Capsule())
@@ -218,7 +216,8 @@ struct TodayView: View {
                             .foregroundStyle(Theme.secondaryLabel)
                     }
                 }
-                .card()
+                .padding(.vertical, Theme.Spacing.m)
+                .overlay(alignment: .top) { Divider() }
             } else {
                 SectionHeader(text: "身体状态")
                 unauthorizedHealthCard
@@ -357,32 +356,35 @@ struct TodayView: View {
                         }
                     }
                 }
-                .card()
+                .padding(Theme.Spacing.l)
+                .background(Theme.homePanel, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
             }
         } else {
-            // 还没有课程表：给一个显眼的入口，而不是让人去翻底部 Tab
-            SectionHeader(text: "今日课程")
-            Button {
-                appState.selectedTab = .plan
-            } label: {
-                HStack(spacing: Theme.Spacing.m) {
-                    SymbolChip("calendar", tint: Theme.accent)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(plans.contains { $0.isActive } ? "今天没有安排训练" : "还没有训练计划")
-                            .font(Theme.Font.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(plans.contains { $0.isActive } ? "查看课程表，按自己的节奏来" : "和 \(displayName) 一起安排第一份计划")
-                            .font(Theme.Font.caption)
-                            .foregroundStyle(Theme.secondaryLabel)
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                SectionHeader(text: "今日课程")
+                Button {
+                    appState.selectedTab = .plan
+                } label: {
+                    HStack(spacing: Theme.Spacing.m) {
+                        SymbolChip("calendar", tint: Theme.accent)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(plans.contains { $0.isActive } ? "今天没有安排训练" : "还没有训练计划")
+                                .font(Theme.Font.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(plans.contains { $0.isActive } ? "查看课程表，按自己的节奏来" : "和 \(displayName) 一起安排第一份计划")
+                                .font(Theme.Font.caption)
+                                .foregroundStyle(Theme.secondaryLabel)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(Theme.Font.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.tertiaryLabel)
                     }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(Theme.Font.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.tertiaryLabel)
+                    .padding(Theme.Spacing.l)
+                    .background(Theme.homePanel, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
                 }
-                .card()
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -412,12 +414,13 @@ struct TodayView: View {
             }
 
             if items.isEmpty {
-                EmptyStateView(
-                    symbol: "square.and.pencil",
-                    title: "今天还没有记录",
-                    message: "在下面说一句「深蹲100kg 5×5」试试"
-                )
-                .card()
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("今天还没有记录").font(Theme.Font.subheadline)
+                    Text("在下面说一句「深蹲100kg 5×5」试试")
+                        .font(Theme.Font.footnote)
+                        .foregroundStyle(Theme.secondaryLabel)
+                }
+                .padding(.vertical, Theme.Spacing.m)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(items.prefix(3).enumerated()), id: \.element.id) { index, item in
@@ -427,144 +430,29 @@ struct TodayView: View {
                             RecordRow(item: item)
                         }
                         .buttonStyle(.plain)
-
-                        if index < min(items.count, 3) - 1 {
-                            RowDivider()
-                        }
+                        if index < min(items.count, 3) - 1 { RowDivider() }
                     }
                 }
-                .card()
             }
         }
     }
 
     // MARK: - 输入条
 
-    /// FR13.2：胶囊输入条，位于 Tab 栏之上，用 chip 底。
-    /// 首页准备文字与照片，发送一次即可开始解析。
     private var inputBar: some View {
-        VStack(spacing: Theme.Spacing.s) {
-            if let draftPhoto, let image = UIImage(data: draftPhoto) {
-                HStack(spacing: Theme.Spacing.s) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner))
-                    Text("已附加照片，可补充说明后发送")
-                        .font(Theme.Font.footnote)
-                        .foregroundStyle(Theme.secondaryLabel)
-                    Spacer(minLength: 0)
-                    Button("移除") { self.draftPhoto = nil }
-                        .font(Theme.Font.footnote)
-                }
-                .padding(.horizontal, Theme.Spacing.s)
-            }
-            inputComposer
-        }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.vertical, Theme.Spacing.s)
-        .frame(maxWidth: .infinity)
-        .background(Theme.conversationCanvas.ignoresSafeArea(edges: .bottom))
-
-    }
-
-    private var inputComposer: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Group {
-                    if photoItem != nil {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "plus")
-                            .font(.system(size: 19))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(Theme.accent)
-                    }
-                }
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(photoItem != nil)
-            .accessibilityLabel("添加记录照片")
-
-            TextField("和 \(displayName) 说说…", text: $draftText, axis: .vertical)
-                .lineLimit(1...3)
-                .font(Theme.Font.subheadline)
-                .focused($isInputFocused)
-                .submitLabel(.send)
-                .onSubmit(routeInput)
-
-            if isInputFocused {
-                Button {
-                    isInputFocused = false
-                } label: {
-                    Image(systemName: "keyboard.chevron.compact.down")
-                        .font(.system(size: 20))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.secondaryLabel)
-                .accessibilityLabel("收起键盘")
-                .accessibilityHint("保留文字和已附加照片")
-                .accessibilityIdentifier("today.dismissKeyboard")
-            }
-
-            if draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && draftPhoto == nil {
-                Button {
-                    isInputFocused = false
-                    appState.isQuickLogPresented = true
-                } label: {
-                    Image(systemName: "mic")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.secondaryLabel)
-                }
-                .buttonStyle(.plain)
-                .frame(width: 44, height: 44)
-                .accessibilityLabel("语音记录")
-            } else {
-                Button(action: routeInput) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(width: 44, height: 44)
-                        .background(Theme.accent, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(photoItem != nil)
-                .accessibilityLabel("发送")
-            }
-        }
-        .padding(.leading, Theme.Spacing.l)
-        .padding(.trailing, 6)
-        .padding(.vertical, 6)
-        .background(Theme.chip, in: RoundedRectangle(cornerRadius: 28))
-    }
-
-    /// 照片先附在首页，用户可以补充说明、移除或替换，再统一发送。
-    private func attachPhotoFromHome() async {
-        guard let item = photoItem else { return }
-        do {
-            let data = try await item.loadTransferable(type: Data.self)
-            try Task.checkCancellation()
-            guard let data, !data.isEmpty else {
-                photoItem = nil
-                appState.showToast("无法读取这张照片，请换一张")
-                return
-            }
-            draftPhoto = data
-            photoItem = nil
-        } catch {
-            guard !Task.isCancelled else { return }
-            photoItem = nil
-            appState.showToast("读取照片失败，请重试")
-        }
+        MessageComposer(
+            text: $draftText,
+            photo: $draftPhoto,
+            dictation: dictation,
+            focus: $isInputFocused,
+            placeholder: "和 \(displayName) 说说…",
+            identifier: "today",
+            background: Theme.homeCanvas,
+            onSend: routeInput
+        )
     }
 
     private func routeInput() {
-        guard photoItem == nil else { return }
         isInputFocused = false
         switch HomeInputRouter.destination(text: draftText, hasPhoto: draftPhoto != nil) {
         case .empty: break
@@ -582,7 +470,7 @@ struct TodayView: View {
 
     private func openLogSheet() {
         let text = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard photoItem == nil, !text.isEmpty || draftPhoto != nil else { return }
+        guard !text.isEmpty || draftPhoto != nil else { return }
         isInputFocused = false
         appState.pendingLogText = text
         appState.pendingLogPhoto = draftPhoto
@@ -654,57 +542,76 @@ struct StatTile: View {
     }
 }
 
-/// 记录行（今日与记录页共用）。
-/// 时间放在右侧而不是标题下面 —— 扫一列时间就能定位，不用逐行读。
+/// 紧凑记录行：照片与类型图标共用左列，来源与时间使用固定右列。
 struct RecordRow: View {
-
     let item: RecordItem
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var metadataWidth: CGFloat = 64
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            RecordIcon(kind: item.kind)
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(item.title)
-                        .font(Theme.Font.headline)
-                        .lineLimit(2)
-                    if item.hasPhoto {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Theme.tertiaryLabel)
-                    }
-                    if let badge = item.badge {
-                        Badge(badge.text, tone: badge.tone)
-                    }
+            VStack(spacing: 2) {
+                RecordIcon(kind: item.kind)
+                if item.hasPhoto {
+                    Image(systemName: "camera.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.secondaryLabel)
+                        .accessibilityLabel("附有照片")
                 }
+            }
+            .frame(width: 36)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text(item.displayTitle)
+                    .font(Theme.Font.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(Theme.Font.footnote)
                         .foregroundStyle(item.isPendingNote ? Theme.warning : Theme.secondaryLabel)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                if dynamicTypeSize.isAccessibilitySize { metadata }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: Theme.Spacing.xs)
-
-            VStack(alignment: .trailing, spacing: Theme.Spacing.xs) {
-                Text(Format.time(item.date))
-                    .font(Theme.Font.caption)
-                    .foregroundStyle(Theme.tertiaryLabel)
-                    .monospacedDigit()
-                if !item.isEditable {
-                    // HealthKit 同步来的记录只读，源数据在「健康」App
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Theme.tertiaryLabel)
-                        .accessibilityLabel("只读")
-                }
+            if !dynamicTypeSize.isAccessibilitySize {
+                metadata.frame(width: metadataWidth, alignment: .trailing)
             }
-            .padding(.top, 2)
         }
-        .padding(.vertical, 11)
+        .padding(.vertical, Theme.Spacing.m)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var metadata: some View {
+        VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: Theme.Spacing.xs) {
+            Text(Format.time(item.date))
+                .font(Theme.Font.caption)
+                .foregroundStyle(Theme.secondaryLabel)
+                .monospacedDigit()
+            if let badge = item.badge {
+                if item.isPendingNote { Badge(badge.text, tone: badge.tone) }
+                else { RecordSourceLabel(text: badge.text) }
+            }
+            if !item.isEditable {
+                Label("只读", systemImage: "lock.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.secondaryLabel)
+            }
+        }
+        .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .trailing)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var accessibilitySummary: String {
+        // 展示名可以精简，VoiceOver 和详情仍提供完整原名。
+        [item.title, item.subtitle, Format.time(item.date), item.badge?.text,
+         item.hasPhoto ? "附有照片" : nil, item.isEditable ? nil : "只读"]
+            .compactMap { $0 }.joined(separator: "，")
     }
 }
 
