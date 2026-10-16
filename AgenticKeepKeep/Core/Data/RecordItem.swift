@@ -66,6 +66,36 @@ struct RecordItem: Identifiable {
         }
     }
 
+    /// 列表用短名称；详情与辅助朗读仍使用完整 title。
+    var displayTitle: String {
+        listHeading.text
+    }
+
+    var listHeading: RecordDisplayName.Presentation {
+        guard case .meal(let meal) = payload else {
+            return .init(name: title, itemCount: 1)
+        }
+        return RecordDisplayName.mealPresentation(names: meal.items.map(\.name), fallback: title)
+    }
+
+    /// 列表仅展示第一项；搜索与辅助朗读仍覆盖所有食物，不读取照片数据。
+    var accessibilityTitle: String {
+        guard case .meal(let meal) = payload else { return title }
+        let names = meal.items.map(\.name).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return names.isEmpty ? title : names.joined(separator: "、")
+    }
+
+    func matchesSearch(_ query: String) -> Bool {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return true }
+        var fields = [title, subtitle ?? ""]
+        if case .meal(let meal) = payload {
+            fields.append(meal.note)
+            fields.append(contentsOf: meal.items.map(\.name))
+        }
+        return fields.contains { $0.localizedCaseInsensitiveContains(query) }
+    }
+
     var subtitle: String? {
         switch payload {
         case .workout(let model):
@@ -117,13 +147,13 @@ struct RecordItem: Identifiable {
         return false
     }
 
-    /// 右上角来源徽标。色调语义见 `BadgeTone` —— 默认中性，只有需要它跳出来时才用实色
+    /// 来源及待归类状态。列表可作次级文字，其他场景保留 BadgeTone 的语义。
     var badge: (text: String, tone: BadgeTone)? {
         switch payload {
         case .workout:
             return nil
         case .meal(let model):
-            return model.containsEstimate ? ("AI 估算", .solid(Theme.accent)) : nil
+            return model.containsEstimate ? ("AI 估算", .neutral) : nil
         case .metric:
             return nil
         case .rawNote(let model):

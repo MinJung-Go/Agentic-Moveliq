@@ -6,7 +6,8 @@ import SwiftUI
 /// 相位由时间直接算出而不是靠 `Timer` + `withAnimation`：后者在没有视图时也会继续跑。
 struct PulsingDots: View {
 
-    var tint: Color = Theme.tertiaryLabel
+    /// nil 时继承按钮前景，禁用/加载状态不再固定使用白色。
+    var tint: Color? = Theme.tertiaryLabel
     var dotSize: CGFloat = 5
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -30,7 +31,7 @@ struct PulsingDots: View {
         HStack(spacing: 3) {
             ForEach(0..<Self.count, id: \.self) { index in
                 Circle()
-                    .fill(tint)
+                    .fill(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.foreground))
                     .frame(width: dotSize, height: dotSize)
                     .opacity(active == -1 || active == index ? 1 : 0.3)
             }

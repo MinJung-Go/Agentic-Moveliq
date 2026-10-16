@@ -36,7 +36,8 @@ struct LoginView: View {
                             if visible { TextField("至少 12 位", text: $password) }
                             else { SecureField("至少 12 位", text: $password) }
                         }.textContentType(registration ? .newPassword : .password)
-                        Button(visible ? "隐藏" : "显示") { visible.toggle() }.font(.caption)
+                        Button(visible ? "隐藏" : "显示") { visible.toggle() }
+                            .buttonStyle(PlainActionButtonStyle(font: .caption))
                     }
                 }
                 if registration {
@@ -55,7 +56,7 @@ struct LoginView: View {
                     submit()
                 } label: {
                     HStack {
-                        if auth.busy { ProgressView() }
+                        if auth.busy { ProgressView().tint(Theme.secondaryLabel) }
                         Text(auth.busy ? "请稍候…" : registration ? "创建账号" : "登录")
                     }
                 }.buttonStyle(PrimaryButtonStyle()).disabled(auth.busy)
@@ -84,7 +85,14 @@ struct LoginView: View {
     private func field<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.footnote).foregroundStyle(.secondary)
-            content().padding(14).background(Theme.cardNested, in: RoundedRectangle(cornerRadius: 14))
+            content()
+                .font(Theme.Font.body)
+                .accessibilityLabel(title)
+                .accessibilityHint(validation ?? auth.message ?? "")
+                .padding(.horizontal, Theme.Spacing.m)
+                .padding(.vertical, Theme.Spacing.m)
+                .frame(minHeight: 48)
+                .background(Theme.cardNested, in: RoundedRectangle(cornerRadius: Theme.Radius.inner))
         }
     }
     private func submit() {

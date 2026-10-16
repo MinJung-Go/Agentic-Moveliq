@@ -24,8 +24,23 @@ enum Theme {
 
     /// 页面底色：浅色保留系统分组底色，深色使用炭黑 #161719。
     static let canvas = surface(light: .systemGroupedBackground, dark: 0x161719)
-    /// 首页与聊天正文：浅色白底、深色炭黑。
+    /// 聊天与报告正文：浅色白底、深色炭黑。
     static let conversationCanvas = surface(light: .systemBackground, dark: 0x161719)
+    /// 第 33 轮第五版：首页与记录页的局部样式，不改聊天、报告及全局卡片。
+    enum Journal {
+        static let canvas = Theme.surface(light: 0xFFFEFA, dark: 0x191A18)
+        static let panel = Theme.surface(light: 0xF3F0E8, dark: 0x262723)
+        static let label = Theme.surface(light: 0x272723, dark: 0xF1F0E9)
+        static let secondary = Theme.surface(light: 0x65645F, dark: 0xB9B9AF)
+        static let metadata = Theme.surface(light: 0x77746D, dark: 0xA4A59A)
+        static let line = Theme.surface(light: 0xE8E5DE, dark: 0x363830)
+        static let fill = Theme.surface(light: 0xEFEDE7, dark: 0x2B2D27)
+        static let action = Theme.surface(light: 0x986219, dark: 0xE1B373)
+        static let inset: CGFloat = 24
+        static let timeWidth: CGFloat = 42
+        static let columnGap: CGFloat = 16
+        static let panelRadius: CGFloat = 16
+    }
     /// 卡片：浅色白底，深色 #232528。
     static let card = surface(light: .secondarySystemGroupedBackground, dark: 0x232528)
     /// 卡片内嵌块：指标块、字段行、缩略图、思考区容器（浅色 `#F2F2F7` / 深色 `#2C2E32`）
@@ -41,6 +56,12 @@ enum Theme {
                           blue: CGFloat(dark & 0xFF) / 255, alpha: 1)
                 : light.resolvedColor(with: trait)
         })
+    }
+
+    private static func surface(light: UInt32, dark: UInt32) -> Color {
+        surface(light: UIColor(red: CGFloat((light >> 16) & 0xFF) / 255,
+                               green: CGFloat((light >> 8) & 0xFF) / 255,
+                               blue: CGFloat(light & 0xFF) / 255, alpha: 1), dark: dark)
     }
 
     /// 0.5pt 分隔线与描边：深色用白 8.5%、浅色用黑 5.5%。
@@ -91,7 +112,7 @@ enum Theme {
 
     // MARK: - 字体角色
     //
-    // 字重阶梯只有 400 / 600 / 700 —— **不使用 500**，中间强调一律 600。
+    // 通用字重为 400 / 600 / 700；第 33 轮 Journal 名称使用已确认的 500。
     // 用系统语义字号而非写死 point size，以跟随动态字体。
     // **一律不设负字距**：界面以中文为主，汉字字面本来就是等宽方块，收字距会让笔画相贴。
 
@@ -194,7 +215,7 @@ enum RecordKind: String, CaseIterable, Identifiable {
 
 // MARK: - 图标
 
-/// 语义色**实色底 + 白色符号**的图标容器。
+/// 语义色图标容器；暖橙/亮黄使用深色前景，其余保留调用方语义。
 ///
 /// 不用 Emoji（彩色、基线随字体变化、无法着色）、不加渐变与投影（会破坏渲染模式）、
 /// 不用淡底同色符号（那是「AI 味」的来源，见 `Theme` 顶部第 3 条）。
@@ -202,20 +223,19 @@ struct SymbolChip: View {
 
     let symbol: String
     var tint: Color = Theme.accent
-    /// 符号色。语义色实底上白符号是唯一正确的搭配；**亮色底（黄）例外** ——
-    /// 白字读不出来，调用方传 `.black`（`Badge` 侧对应 `BadgeTone.bright`）
+    /// 默认按语义底色选择前景，调用方仍可显式覆盖。
     var symbolColor: Color = .white
     var compact = false
 
     init(
         _ symbol: String,
         tint: Color = Theme.accent,
-        symbolColor: Color = .white,
+        symbolColor: Color? = nil,
         compact: Bool = false
     ) {
         self.symbol = symbol
         self.tint = tint
-        self.symbolColor = symbolColor
+        self.symbolColor = symbolColor ?? ((tint == Theme.accent || tint == Theme.warning) ? Theme.onAccent : .white)
         self.compact = compact
     }
 
@@ -366,6 +386,16 @@ struct Badge: View {
     }
 }
 
+/// 来源是辅助文字，列表和详情共用同一字号与前景。
+struct RecordSourceLabel: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(Theme.secondaryLabel)
+    }
+}
+
 /// 空态：符号 40pt → 标题 17/600 → 说明 13/次级（居中）→ 可选一个主按钮
 ///
 /// 参数顺序按「符号 → 色调 → 文案」排，与 `SymbolChip` 一致；
@@ -421,12 +451,13 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 /// 次级操作采用轻量文字，保留44pt触控高度。
 struct SecondaryButtonStyle: ButtonStyle {
+    var tint: Color = .primary
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Theme.Font.subheadline.weight(.semibold))
-            .foregroundStyle(isEnabled ? Color.primary : Theme.secondaryLabel)
+            .foregroundStyle(isEnabled ? tint : Theme.secondaryLabel)
             .frame(minHeight: 44)
             .padding(.horizontal, Theme.Spacing.m)
             .opacity(configuration.isPressed ? 0.7 : 1)
@@ -436,6 +467,7 @@ struct SecondaryButtonStyle: ButtonStyle {
 /// 文字级动作：无底，强调色字。
 /// 刻意不叫 `PlainButtonStyle` —— SwiftUI 自带同名类型，重名会把它遮住。
 struct PlainActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
 
     var font: Font = Theme.Font.subheadline.weight(.semibold)
     var tint: Color = Theme.accent
@@ -443,8 +475,10 @@ struct PlainActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(font)
-            .foregroundStyle(tint)
-            .opacity(configuration.isPressed ? 0.5 : 1)
+            .foregroundStyle(isEnabled ? tint : Theme.secondaryLabel)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 

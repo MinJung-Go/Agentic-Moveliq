@@ -69,5 +69,32 @@ final class VoiceInputTests: XCTestCase {
         driver.onUpdate?("已识别", false); driver.onFailure?("识别中断")
         XCTAssertEqual(value.text, "草稿\n已识别"); XCTAssertFalse(value.active)
         XCTAssertEqual(value.notice, "识别中断")
+        XCTAssertTrue(value.hasError)
     }
+    func testRetryClearsErrorAndKeepsRestoredDraft() async {
+        let driver = DictationStub(), value: VoiceInput
+        value = VoiceInput(recognizer: driver)
+        value.begin(draft: "原草稿")
+        driver.onFailure?("麦克风未授权")
+        XCTAssertEqual(value.text, "原草稿")
+        XCTAssertTrue(value.hasError)
+        value.begin(draft: value.text)
+        XCTAssertFalse(value.hasError)
+        XCTAssertTrue(value.active)
+        value.finish(cancel: true)
+        XCTAssertEqual(value.text, "原草稿")
+    }
+
+    func testClearingFailureNoticeRetainsTextForManualSend() async {
+        let driver = DictationStub(), value: VoiceInput
+        value = VoiceInput(recognizer: driver)
+        value.begin(draft: "已有草稿")
+        driver.onUpdate?("新增转写", false)
+        driver.onFailure?("识别中断")
+        value.clearNotice()
+        XCTAssertFalse(value.hasError)
+        XCTAssertEqual(value.notice, "")
+        XCTAssertEqual(value.text, "已有草稿\n新增转写")
+    }
+
 }

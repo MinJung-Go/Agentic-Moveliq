@@ -216,7 +216,7 @@ struct InsightsView: View {
             } label: {
                 if isGenerating {
                     HStack(spacing: Theme.Spacing.s) {
-                        PulsingDots(tint: .white)
+                        PulsingDots(tint: nil)
                         Text("正在分析…")
                     }
                 } else {
@@ -372,7 +372,7 @@ struct InsightsView: View {
     }
 }
 
-/// 报告详情：引文用衬线（编辑场景），「AI 依据」默认折叠、可展开核对
+/// 报告详情：连续阅读排版，旧正文只在展示时分段；AI 依据默认折叠。
 struct ReportDetailView: View {
 
     let report: AnalysisReport
@@ -384,31 +384,38 @@ struct ReportDetailView: View {
                     HStack {
                         Text(report.periodText)
                             .font(Theme.Font.caption)
-                            .foregroundStyle(Theme.tertiaryLabel)
+                            .foregroundStyle(Theme.secondaryLabel)
                         Spacer(minLength: 0)
                         Text("AI 生成")
                             .font(Theme.Font.badge)
                             .fontWeight(.regular)
-                            .foregroundStyle(Theme.tertiaryLabel)
+                            .foregroundStyle(Theme.secondaryLabel)
                     }
 
                     Text(report.headline)
-                        .font(Theme.Font.title)
+                        .font(.title2.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
 
                     if !report.tags.isEmpty {
                         WrapLayout(spacing: 6, lineSpacing: 6) {
                             ForEach(report.tags, id: \.self) { tag in
-                                Badge(tag)
+                                Text("• \(tag)")
+                                    .font(Theme.Font.caption)
+                                    .foregroundStyle(Theme.secondaryLabel)
                             }
                         }
                     }
                 }
                 .padding(.bottom, Theme.Spacing.s)
 
-                MarkdownText(content: report.body)
-                    .lineSpacing(5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Divider()
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(Array(ReportTextLayout.paragraphs(in: report.body).enumerated()), id: \.offset) { _, paragraph in
+                        MarkdownText(content: paragraph, blockSpacing: 18)
+                            .lineSpacing(6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
 
                 if !report.citedDataText.isEmpty {
                     citedDataCard
@@ -417,12 +424,13 @@ struct ReportDetailView: View {
                 Text("报告由 AI 基于本地聚合数据生成，仅供参考，不构成医疗建议。")
                     .font(Theme.Font.badge)
                     .fontWeight(.regular)
-                    .foregroundStyle(Theme.tertiaryLabel)
+                    .foregroundStyle(Theme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(Theme.Spacing.l)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .padding(.vertical, Theme.Spacing.l)
         }
-        .background(Theme.canvas)
+        .background(Theme.conversationCanvas)
         .navigationTitle("分析报告")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -445,7 +453,9 @@ struct ReportDetailView: View {
                     .font(Theme.Font.footnote.weight(.semibold))
             }
         }
-        .card()
+        .padding(.vertical, Theme.Spacing.s)
+        .overlay(alignment: .top) { Divider() }
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 

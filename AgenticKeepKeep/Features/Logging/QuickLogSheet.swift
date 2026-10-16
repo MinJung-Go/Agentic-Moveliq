@@ -1,4 +1,3 @@
-import PhotosUI
 import SwiftUI
 import SwiftData
 import UIKit
@@ -12,10 +11,10 @@ struct QuickLogSheet: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var viewModel: LoggingViewModel
 
-    @StateObject private var speech = SpeechRecognizer()
-    @State private var photoItem: PhotosPickerItem?
+    @StateObject private var dictation = VoiceInput()
     @State private var pickedPhoto: Data?
-    @State private var photoErrorMessage: String?
+    @State private var isSubmittingInput = false
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -28,8 +27,8 @@ struct QuickLogSheet: View {
                         .padding(Theme.Spacing.l)
                         .background(Theme.canvas)
                 }
-                inputBar
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) { inputBar }
             .background(Theme.canvas)
             .navigationTitle("记录")
             .navigationBarTitleDisplayMode(.inline)
@@ -43,6 +42,7 @@ struct QuickLogSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if viewModel.hasTurns {
                         Button("清空") {
+                            dictation.finish()
                             withAnimation { viewModel.reset() }
                         }
                         .foregroundStyle(Theme.danger)
@@ -300,122 +300,29 @@ struct QuickLogSheet: View {
     // MARK: - 输入条
 
     private var inputBar: some View {
-        VStack(spacing: 8) {
-            // 照片是**附件**：选中后只显示缩略图，可以补一句说明再发送
-            if let pickedPhoto, let image = UIImage(data: pickedPhoto) {
-                HStack(spacing: Theme.Spacing.m) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("已附加照片").font(Theme.Font.footnote.weight(.semibold))
-                        Text("可再补一句说明（如「大约一碗」），然后发送")
-                            .font(Theme.Font.badge)
-                            .fontWeight(.regular)
-                            .foregroundStyle(Theme.secondaryLabel)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Button("移除") {
-                        self.pickedPhoto = nil
-                        photoItem = nil
-                    }
-                    .buttonStyle(PlainActionButtonStyle(font: Theme.Font.footnote, tint: Theme.secondaryLabel))
-                }
-                .padding(10)
-                .background(Theme.cardNested, in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
-            }
-
-            if let photoErrorMessage {
-                Text(photoErrorMessage)
-                    .font(Theme.Font.footnote)
-                    .foregroundStyle(Theme.danger)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let speechError = speech.errorText {
-                Text(speechError)
-                    .font(Theme.Font.footnote)
-                    .foregroundStyle(Theme.danger)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            HStack(spacing: Theme.Spacing.s) {
-                Button {
-                    speech.toggle()
-                } label: {
-                    Image(systemName: speech.isRecording ? "stop.circle.fill" : "mic")
-                        .font(.system(size: 19))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(speech.isRecording ? Theme.danger : Theme.accent)
-                        .symbolEffect(.pulse, isActive: speech.isRecording)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(speech.isRecording ? "停止录音" : "语音输入")
-
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Image(systemName: "camera")
-                        .font(.system(size: 19))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(Theme.accent)
-                }
-                .accessibilityLabel("附加照片")
-
-                TextField("说一句，比如「深蹲100kg 5×5」", text: $viewModel.inputText, axis: .vertical)
-                    .lineLimit(1...4)
-                    .font(Theme.Font.body)
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.vertical, 9)
-                    .background(Theme.chip, in: Capsule())
-
-                ChatSendButton(
-                    isBusy: false,
-                    canSend: canSend,
-                    onSend: send,
-                    onStop: {}
-                )
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.top, Theme.Spacing.s)
-        .padding(.bottom, 10)
-        .background(alignment: .top) {
-            // 导航层通栏实底 + 顶部 0.5pt 分隔线（FR13.1）
-            VStack(spacing: 0) {
-                Rectangle().fill(Theme.hairline).frame(height: 0.5)
-                Theme.canvas
-            }
-        }
-        .onChange(of: speech.transcript) { _, newValue in
-            if !newValue.isEmpty {
-                viewModel.inputText = newValue
-            }
-        }
-        .onChange(of: photoItem) { _, newValue in
-            guard let newValue else { return }
-            Task { await attachPhoto(newValue) }
-        }
-    }
-
-    /// 有文字或有照片都能发送；两者都有时，文字作为照片的补充说明
-    private var canSend: Bool {
-        guard !viewModel.isParsing else { return false }
-        if pickedPhoto != nil { return true }
-        return !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        MessageComposer(
+            text: $viewModel.inputText,
+            photo: $pickedPhoto,
+            dictation: dictation,
+            focus: $isInputFocused,
+            placeholder: "记下饮食、训练或感受…",
+            isBusy: viewModel.isParsing || isSubmittingInput,
+            identifier: "logging",
+            background: Theme.canvas,
+            onSend: send
+        )
     }
 
     private func send() {
+        guard !isSubmittingInput, !viewModel.isParsing,
+              pickedPhoto != nil || !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let photo = pickedPhoto
         pickedPhoto = nil
-        photoItem = nil
-        photoErrorMessage = nil
-        Task { await viewModel.submit(context: context, photo: photo) }
+        isSubmittingInput = true
+        Task {
+            defer { isSubmittingInput = false }
+            await viewModel.submit(context: context, photo: photo)
+        }
     }
 
     // MARK: - 动作
@@ -431,21 +338,6 @@ struct QuickLogSheet: View {
         appState.showToast("已保存 \(count) 条记录")
     }
 
-    /// 选图只做「附加」，不立刻分析——用户可以先补一句说明再发送
-    private func attachPhoto(_ item: PhotosPickerItem) async {
-        photoErrorMessage = nil
-
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self), !data.isEmpty else {
-                photoErrorMessage = "无法读取这张照片，请换一张，或改用文字记录。"
-                return
-            }
-            pickedPhoto = data
-        } catch {
-            photoErrorMessage = "读取照片失败：\(error.localizedDescription)"
-        }
-    }
-
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
         withAnimation {
             if viewModel.isParsing {
@@ -457,10 +349,9 @@ struct QuickLogSheet: View {
     }
 
     private func close() {
+        dictation.finish()
         viewModel.reset()
         pickedPhoto = nil
-        photoItem = nil
-        photoErrorMessage = nil
         dismiss()
     }
 }

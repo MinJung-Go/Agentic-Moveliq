@@ -288,7 +288,7 @@ struct FoodItemEditorRow: View {
 
             HStack {
                 if item.isEstimated {
-                    Badge("AI 估算", tone: .bright(Theme.accent))
+                    RecordSourceLabel(text: "AI 估算")
                 }
                 Spacer()
                 Button("删除", role: .destructive, action: onDelete)
