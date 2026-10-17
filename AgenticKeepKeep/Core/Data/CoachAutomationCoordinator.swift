@@ -62,7 +62,7 @@ final class CoachAutomationCoordinator: ObservableObject {
             + signals.map { "\($0.title)：\($0.detail)" }.joined(separator: "\n")
             + "\n只为授权计划提出必要的未来调整（propose_plan_adjustment），不创建课程表、不调用独立系统写入。只使用真实ID/版本与具体日期时间。不要堆叠补课。需要澄清就先询问，不臆测身体状态。执行权限由本机判定，越界整批待确认。"
         let client = try LLMSettings.shared.makeRecordingClient()
-        let reply = try await CoachAgent(client: client).reply(history: [], userMessage: request, context: coachContext)
+        let reply = try await CoachAgent(client: client, policy: LLMSettings.shared.coachPolicy).reply(history: [], userMessage: request, context: coachContext)
         try Task.checkCancellation(); try CoachLifeStore.checkAccount(context: context, token: token)
         guard generation == marker, try CoachLifeStore.automationRules(context).revision == rules.revision,
               try CoachLifeContextBuilder.revision(context: context) == lifeRevision else { throw CoachPluginError.stale }
@@ -164,6 +164,7 @@ final class CoachAutomationCoordinator: ObservableObject {
                         history: [CoachAutomationRecord]) throws -> [CoachAutomationChange] {
         try draft.changes.map { change in
             guard ["reschedule", "update", "deload", "skip"].contains(change.action), change.title == nil, change.exercises == nil,
+                  change.weightReductionPercent == nil || change.action == "deload",
                   let id = change.dayID.flatMap(UUID.init(uuidString:)), let day = plan.days.first(where: { $0.uuid == id }) else { throw CoachPluginError.invalid }
             let current = snapshot(day, planID: plan.uuid)
             let anchor = history.filter { $0.ruleID == rules.revision && $0.planID == plan.uuid }.compactMap {
@@ -176,8 +177,11 @@ final class CoachAutomationCoordinator: ObservableObject {
                 proposed.status = PlanDayStatus.skipped.rawValue
             } else if change.action == "deload" {
                 guard change.startTime == nil, change.date == nil, change.durationMinutes == nil else { throw CoachPluginError.invalid }
+                let percent = change.weightReductionPercent ?? 15
+                guard (1...50).contains(percent) else { throw CoachPluginError.invalid }
+                let factor = 1 - Double(percent) / 100
                 for index in proposed.exercises.indices {
-                    if let weight = proposed.exercises[index].weight { proposed.exercises[index].weight = (weight * 0.85 * 2).rounded() / 2 }
+                    if let weight = proposed.exercises[index].weight { proposed.exercises[index].weight = (weight * factor * 2).rounded() / 2 }
                 }
             } else {
                 guard let oldStart = current.start else { throw CoachPluginError.invalid }

@@ -54,6 +54,24 @@ final class CoachAutomationDataTests: XCTestCase {
         value = draft(day, plan: plan); value.changes[0].title = "模型偷偷改标题"
         XCTAssertThrowsError(try CoachAutomationCoordinator.changes(value, plan: plan, rules: rules, history: []))
     }
+    func testRequestedWeightReductionUsesExactPercentWithinUserLimit() throws {
+        let (context, plan, day, configured) = try fixture()
+        var rules = configured; rules.actions = [.reduceWeight]; rules.maximumWeightReductionPercent = 5
+        var change = PlanAdjustmentChange(dayOffset: 2, action: "deload", detail: "只降低5%")
+        change.dayID = day.uuid.uuidString; change.weightReductionPercent = 5
+        let draft = PlanAdjustmentDraft(summary: "轻量调整", changes: [change], planID: plan.uuid.uuidString, revision: PlanMutationStore.revision(plan))
+        let changes = try CoachAutomationCoordinator.changes(draft, plan: plan, rules: rules, history: [])
+        XCTAssertEqual(changes.first?.proposed.exercises.first?.weight, 57)
+        var evidence = CoachAutomationEvidence(verifiedAt: .now); evidence.accountMatches = true; evidence.versionsMatch = true
+        evidence.constraintsVerified = true; evidence.needsUserClarification = false
+        XCTAssertEqual(CoachAutomationPolicy.evaluate(changes, rules: rules, evidence: evidence), .automatic)
+        let data = try JSONSerialization.data(withJSONObject: ["planID": plan.uuid.uuidString, "revision": PlanMutationStore.revision(plan),
+            "summary": "轻量调整", "changes": [["action": "deload", "dayID": day.uuid.uuidString, "weightReductionPercent": 5, "detail": "只降低5%"]]])
+        let message = ChatMessage(role: .assistant, content: "", pendingAdjustmentJSON: String(decoding: data, as: UTF8.self))
+        context.insert(message); try context.save()
+        XCTAssertNotNil(try PlanMutationStore.apply(message: message, context: context))
+        XCTAssertEqual(day.exercises.first?.targetWeightKg, 57)
+    }
     func testPlanAndAuditCommitTogetherAndRepeatedApplyDoesNotCreateAnotherAudit() throws {
         let (context, plan, day, rules) = try fixture()
         let json = try JSONSerialization.data(withJSONObject: ["planID": plan.uuid.uuidString, "revision": PlanMutationStore.revision(plan),

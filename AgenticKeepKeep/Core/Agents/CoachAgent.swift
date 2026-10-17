@@ -183,7 +183,7 @@ struct CoachAgent {
         description: AgentPrompts.createPlanToolDescription,
         parameters: JSONSchema.object(
             properties: [
-                "title": JSONSchema.string(description: "计划名称，如「4 周哑铃增肌计划」"),
+                "title": JSONSchema.string(description: "计划名称"),
                 "goal": JSONSchema.string(
                     description: "训练目标",
                     enumValues: ["muscleGain", "fatLoss", "strength", "general"]
@@ -192,25 +192,25 @@ struct CoachAgent {
                 "days": JSONSchema.array(
                     items: JSONSchema.object(
                         properties: [
-                            "dayOffset": JSONSchema.integer(description: "相对今天的天数偏移，0 表示今天"),
-                            "title": JSONSchema.string(description: "当天训练主题，如「胸 + 三头」"),
-                            "startTime": JSONSchema.string(description: "用户允许时段内的本地开始时间 HH:mm；先查生活/日历，未知不填"),
-                            "durationMinutes": JSONSchema.integer(description: "预计训练分钟，10–180；有具体开始时间时必须提供"),
+                            "dayOffset": JSONSchema.integer(description: "距今天数，0=今天"),
+                            "title": JSONSchema.string(description: "训练主题"),
+                            "startTime": JSONSchema.string(description: "核对生活/日历后的本地HH:mm，未知省略"),
+                            "durationMinutes": JSONSchema.integer(description: "10–180分钟；有startTime时必填"),
                             "exercises": JSONSchema.array(
                                 items: JSONSchema.object(
                                     properties: [
                                         "name": JSONSchema.string(description: "动作名称"),
-                                        "setsText": JSONSchema.string(description: "组次描述，如「4×10」"),
-                                        "targetWeightKg": JSONSchema.number(description: "目标重量（kg），不确定可省略")
+                                        "setsText": JSONSchema.string(description: "组次，如4×10"),
+                                        "targetWeightKg": JSONSchema.number(description: "kg，未知省略")
                                     ],
                                     required: ["name"]
                                 ),
-                                description: "当天动作列表"
+                                description: "动作"
                             )
                         ],
                         required: ["dayOffset", "title", "exercises"]
                     ),
-                    description: "训练日列表"
+                    description: "训练日"
                 )
             ],
             required: ["title", "goal", "weeks", "days"]
@@ -219,25 +219,26 @@ struct CoachAgent {
 
     static let adjustPlanTool = LLMTool(
         name: "propose_plan_adjustment",
-        description: "修改或删除已有课程表的草稿，需用户确认。先查课程表取得 planID/revision/dayID，不得编造。",
+        description: "已有计划变更草稿；先查询真实ID/版本，由本机校验权限。",
         parameters: JSONSchema.object(properties: [
-            "planID": JSONSchema.string(description: "目标课程表UUID"),
-            "revision": JSONSchema.string(description: "查询返回的版本原文"),
-            "summary": JSONSchema.string(description: "具体修改说明"),
+            "planID": JSONSchema.string(description: "计划UUID"),
+            "revision": JSONSchema.string(description: "查询所得版本"),
+            "summary": JSONSchema.string(description: "变更说明"),
             "changes": JSONSchema.array(items: JSONSchema.object(properties: [
                 "action": JSONSchema.string(description: "delete_plan 须单独一项", enumValues: ["update", "replace", "reschedule", "deload", "skip", "add_day", "delete_day", "delete_plan", "rename_plan"]),
                 "dayID": JSONSchema.string(description: "已有训练日UUID"),
                 "title": JSONSchema.string(description: "新主题/新计划名称"),
                 "date": JSONSchema.string(description: "绝对本地日期 yyyy-MM-dd"),
-                "startTime": JSONSchema.string(description: "新的本地开始时间 HH:mm；依据用户时段与日历，未知不填"),
-                "durationMinutes": JSONSchema.integer(description: "新的训练分钟，10–180；缩短训练需同步修改实际动作/组次"),
+                "startTime": JSONSchema.string(description: "核对后的本地HH:mm，未知省略"),
+                "durationMinutes": JSONSchema.integer(description: "10–180分钟；同步调整实际动作/组次"),
+                "weightReductionPercent": JSONSchema.integer(description: "仅deload，减重1–50%，省略=15%"),
                 "detail": JSONSchema.string(description: "原因"),
                 "exercises": JSONSchema.array(items: JSONSchema.object(properties: [
                     "name": JSONSchema.string(description: "动作"),
                     "setsText": JSONSchema.string(description: "组次"),
                     "targetWeightKg": JSONSchema.number(description: "目标kg")
-                ], required: ["name", "setsText"]), description: "替换后的完整动作列表")
-            ], required: ["action", "detail"]), description: "最多14项，先查询再提出；不要对同一天重复操作")
+                ], required: ["name", "setsText"]), description: "完整动作列表")
+            ], required: ["action", "detail"]), description: "最多14项，不重复同一天")
         ], required: ["planID", "revision", "summary", "changes"]))
 
     // MARK: - 解析工具参数

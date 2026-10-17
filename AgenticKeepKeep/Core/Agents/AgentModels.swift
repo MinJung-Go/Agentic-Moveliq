@@ -445,13 +445,14 @@ struct PlanAdjustmentChange: Decodable, Equatable {
     var exercises: [PlanExerciseDraft]? = nil
     var startTime: String? = nil
     var durationMinutes: Int? = nil
+    var weightReductionPercent: Int? = nil
     /// 相对今天的天数偏移
     var dayOffset: Int
     var action: String
     var detail: String
 
     enum CodingKeys: String, CodingKey {
-        case dayOffset, day_offset, action, detail, dayID, title, date, exercises, startTime, durationMinutes
+        case dayOffset, day_offset, action, detail, dayID, title, date, exercises, startTime, durationMinutes, weightReductionPercent
     }
 
     init(from decoder: Decoder) throws {
@@ -462,6 +463,7 @@ struct PlanAdjustmentChange: Decodable, Equatable {
         self.exercises = try container.decodeIfPresent([PlanExerciseDraft].self, forKey: .exercises)
         self.startTime = try container.decodeIfPresent(String.self, forKey: .startTime)
         self.durationMinutes = try container.decodeIfPresent(Int.self, forKey: .durationMinutes)
+        self.weightReductionPercent = try container.decodeIfPresent(Int.self, forKey: .weightReductionPercent)
         self.dayOffset = Lenient.int(container, .dayOffset) ?? Lenient.int(container, .day_offset) ?? 0
         self.action = Lenient.string(container, .action) ?? "adjust"
         self.detail = Lenient.string(container, .detail) ?? ""

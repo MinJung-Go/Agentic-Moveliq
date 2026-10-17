@@ -93,9 +93,10 @@ enum PlanMutationStore {
                     if let exercises = change.exercises { setExercises(exercises, day: day, context: context) }
                     if change.action == "skip" { day.status = .skipped }
                     if change.action == "deload" {
+                        let factor = 1 - Double(change.weightReductionPercent ?? 15) / 100
                         for exercise in day.exercises {
                             if let weight = exercise.targetWeightKg, weight.isFinite, weight > 0 {
-                                exercise.targetWeightKg = (weight * 0.85 * 2).rounded() / 2
+                                exercise.targetWeightKg = (weight * factor * 2).rounded() / 2
                             }
                         }
                     }
@@ -166,6 +167,9 @@ enum PlanMutationStore {
         guard !changes.isEmpty, changes.count <= 14 else { throw MutationError.invalid }
         var seen = Set<String>()
         return try changes.map { change in
+            if let reduction = change.weightReductionPercent {
+                guard change.action == "deload", (1...50).contains(reduction) else { throw MutationError.invalid }
+            }
             guard change.detail.utf8.count <= 1500 else { throw MutationError.invalid }
             if let time = change.startTime, CoachLifeTime.minute(time) == nil { throw MutationError.invalid }
             if let duration = change.durationMinutes, !(10...180).contains(duration) { throw MutationError.invalid }

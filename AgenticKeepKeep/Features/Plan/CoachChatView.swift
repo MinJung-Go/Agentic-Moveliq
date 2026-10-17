@@ -878,6 +878,7 @@ struct AdjustmentDraftCard: View {
                             if let date = change.date { Text("日期：\(date)") }
                             if let time = change.startTime { Text("开始：\(time)") }
                             if let minutes = change.durationMinutes { Text("时长：\(minutes)分钟") }
+                            if change.action == "deload" { Text("重量降低\(change.weightReductionPercent ?? 15)%（按0.5 kg取整）") }
                             if let exercises = change.exercises {
                                 ForEach(Array(exercises.enumerated()), id: \.offset) { _, exercise in
                                     Text("\(exercise.name) · \(exercise.setsText)" + (exercise.targetWeightKg.map { " · \(Format.number($0, decimals: $0.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 1))kg" } ?? " · 未设目标重量"))
