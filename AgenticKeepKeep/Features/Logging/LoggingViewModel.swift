@@ -3,7 +3,7 @@ import SwiftData
 
 /// 记录闭环：对话式记录流的宿主。
 /// 用户每说一句 → 追加一条消息 → 解析结果以可编辑卡片内联出现 → 确认后入库。
-/// 任何一步失败都降级为 RawNote，绝不丢用户数据。
+/// 解析失败尝试留存 RawNote；写入失败保留可重试草稿，不误报持久化成功。
 @MainActor
 final class LoggingViewModel: ObservableObject {
 
@@ -34,12 +34,19 @@ final class LoggingViewModel: ObservableObject {
     @Published var isParsing = false
 
     private let settings: LLMSettings
+    private let injectedClient: LLMClient?
+    private let persist: (ModelContext) throws -> Void
+    private var parsingGeneration = UUID()
+    private var parsingTask: Task<[LogDraft], Error>?
 
-    init(settings: LLMSettings = .shared) {
+    init(settings: LLMSettings = .shared, client: LLMClient? = nil,
+         persist: @escaping (ModelContext) throws -> Void = { try $0.save() }) {
         self.settings = settings
+        self.injectedClient = client
+        self.persist = persist
     }
 
-    var isConfigured: Bool { settings.isConfigured }
+    var isConfigured: Bool { injectedClient != nil || settings.isConfigured }
 
     var canSubmit: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isParsing
@@ -49,6 +56,7 @@ final class LoggingViewModel: ObservableObject {
 
     /// 首页点发送后立即开始处理。先消费请求，弹窗重现时不会重复发送。
     func submitHomeInput(from state: AppState, context: ModelContext) async {
+        guard !isParsing else { return }
         let text = state.pendingLogText
         let photo = state.pendingLogPhoto
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || photo != nil else { return }
@@ -68,50 +76,67 @@ final class LoggingViewModel: ObservableObject {
         turns.append(LogTurn(kind: .user, text: text, photoData: photo))
         inputText = ""
 
-        guard settings.isConfigured else {
-            RecordImporter.storeRawNote(text, failureReason: settings.useLocalModel ? "离线模型未就绪" : "云端服务尚未就绪", to: context, photoData: photo)
-            turns.append(LogTurn(
-                kind: .failure,
-                text: settings.useLocalModel ? "离线模型还没准备好。下载完成后可以重新处理，也可以先手动记录。" : "云端服务暂不可用，原文已保留。重新登录或服务恢复后可以重新处理。"
-            ))
+        guard isConfigured else {
+            preserveInput(text, photo: photo, reason: "云端服务尚未就绪",
+                          message: "云端服务暂不可用，重新登录或服务恢复后可以重新处理。", context: context)
             return
         }
 
+        let generation = UUID()
+        parsingGeneration = generation
         isParsing = true
-        defer { isParsing = false }
+        defer {
+            if parsingGeneration == generation {
+                isParsing = false
+                parsingTask = nil
+            }
+        }
 
         do {
-            let client = try settings.makeRecordingClient()
-            let drafts: [LogDraft]
-
-            if let photo {
-                guard let base64 = ImageDownscaler.jpegBase64(from: photo) else {
-                    RecordImporter.storeRawNote(text, failureReason: "图片无法读取", to: context, photoData: photo)
-                    turns.append(LogTurn(kind: .failure, text: "这张图片无法读取，原输入已保存在待归类记录。请换一张或改用文字记录。"))
-                    return
-                }
-                if settings.useLocalModel {
-                    let records = try await ParserAgent(client: client).parse(text, imageBase64JPEG: base64)
-                    drafts = records.compactMap { record in
-                        guard var draft = LogDraft.from(record) else { return nil }
-                        if draft.kind == .meal { draft.meal.photoData = ImageDownscaler.jpegData(from: photo) }
-                        return draft
-                    }
-                } else {
-                    drafts = try await visionDrafts(photo: photo, base64: base64, note: text, client: client)
-                }
-            } else {
-                // 不含本轮：本轮输入单独作为最后一条 user 消息
-                let history = Self.historyTurns(from: Array(turns.dropLast()))
-                let records = try await ParserAgent(client: client).parse(text, history: history)
-                drafts = records.compactMap { LogDraft.from($0) }
+            let client = try injectedClient ?? settings.makeRecordingClient()
+            let history = Self.historyTurns(from: Array(turns.dropLast()))
+            let task = Task { @MainActor in
+                try await self.parseDrafts(text: text, photo: photo, history: history, client: client)
             }
-
+            parsingTask = task
+            let drafts = try await withTaskCancellationHandler {
+                try await task.value
+            } onCancel: { task.cancel() }
+            guard parsingGeneration == generation else { return }
+            try Task.checkCancellation()
             guard !drafts.isEmpty else { throw AgentError.emptyResult }
             turns.append(LogTurn(kind: .assistant, drafts: drafts))
         } catch {
+            guard parsingGeneration == generation else { return }
             appendFailure(for: error, text: text, photo: photo, context: context)
         }
+    }
+
+    private func parseDrafts(text: String, photo: Data?, history: [CoachTurn], client: LLMClient) async throws -> [LogDraft] {
+        try Task.checkCancellation()
+        let drafts: [LogDraft]
+        if let photo {
+            guard let base64 = ImageDownscaler.jpegBase64(from: photo) else {
+                throw LLMError.decoding("图片无法读取，请换一张或改用文字记录。")
+            }
+            if settings.useLocalModel {
+                let records = try await ParserAgent(client: client).parse(text, imageBase64JPEG: base64)
+                drafts = records.compactMap { record in
+                    guard var draft = LogDraft.from(record) else { return nil }
+                    if draft.kind == .meal { draft.meal.photoData = ImageDownscaler.jpegData(from: photo) }
+                    return draft
+                }
+            } else {
+                drafts = try await visionDrafts(photo: photo, base64: base64, note: text, client: client)
+            }
+        } else {
+            // 不含本轮：本轮输入单独作为最后一条 user 消息
+            let records = try await ParserAgent(client: client).parse(text, history: history)
+            drafts = records.compactMap { LogDraft.from($0) }
+        }
+
+        try Task.checkCancellation()
+        return drafts
     }
 
     /// 照片识别：把用户附带的文字作为补充说明一起发过去
@@ -130,20 +155,27 @@ final class LoggingViewModel: ObservableObject {
     /// 失败处理：文字和附件均留存为 RawNote，保留重试入口。
     private func appendFailure(for error: Error, text: String, photo: Data?, context: ModelContext) {
         if let photo {
-            RecordImporter.storeRawNote(text, failureReason: error.localizedDescription, to: context, photoData: photo)
             let message = (error as? LLMError).map(Self.photoFailureMessage(for:))
                 ?? "照片识别失败：\(error.localizedDescription)"
-            turns.append(LogTurn(kind: .failure, text: message + "\n原输入已保存在待归类记录。"))
+            preserveInput(text, photo: photo, reason: error.localizedDescription, message: message, context: context)
             return
         }
 
-        if !text.isEmpty {
-            RecordImporter.storeRawNote(text, failureReason: error.localizedDescription, to: context)
+        preserveInput(text, photo: nil, reason: error.localizedDescription,
+                      message: "没能解析这句：\(error.localizedDescription)", context: context)
+    }
+
+    private func preserveInput(_ text: String, photo: Data?, reason: String, message: String, context: ModelContext) {
+        do {
+            try RecordImporter.storeRawNote(text, failureReason: reason, to: context, photoData: photo, persist: persist)
+            turns.append(LogTurn(kind: .failure, text: message + "\n原输入已保存在待归类记录。"))
+        } catch {
+            turns.append(LogTurn(kind: .failure, text: message + "\n本机保存失败，尚未保存。原文与照片保留在当前对话和下方草稿中，请保留此页并重试保存。"))
+            var draft = LogDraft(kind: .note)
+            draft.note = NoteDraft(text: text.isEmpty && photo != nil ? "待整理的照片" : text,
+                                   photoData: photo, failureReason: reason)
+            turns.append(LogTurn(kind: .assistant, drafts: [draft]))
         }
-        turns.append(LogTurn(
-            kind: .failure,
-            text: "没能解析这句：\(error.localizedDescription)\n原文已保存为「待归类」笔记，不会丢；也可以改用下面的手动记录。"
-        ))
     }
 
     /// 把照片识别的常见失败翻译成可执行的提示
@@ -182,28 +214,22 @@ final class LoggingViewModel: ObservableObject {
 
         var turn = turns[index]
         guard !turn.isSaved else { return 0 }
-        var total = 0
-
-        for draft in turn.drafts where !draft.isEmpty {
-            do {
-                let summary = try RecordImporter.apply([draft.toParsedRecord()], to: context)
-
-                if draft.kind == .meal, let photo = draft.meal.photoData, summary.meals > 0 {
-                    RecordImporter.attachPhoto(photo, toNewestMealIn: context)
-                }
-
-                total += summary.total
-            } catch {
-                continue
-            }
+        let inputs = turn.drafts.filter { !$0.isEmpty }.map { draft in
+            RecordImporter.Input(record: draft.toParsedRecord(),
+                                 photoData: draft.kind == .meal ? draft.meal.photoData : draft.note.photoData,
+                                 failureReason: draft.kind == .note ? draft.note.failureReason : "")
         }
-
-        if total > 0 {
-            turn.savedCount = total
+        guard !inputs.isEmpty else { return 0 }
+        do {
+            let summary = try RecordImporter.applyBatch(inputs, to: context, persist: persist)
+            guard summary.total > 0 else { return 0 }
+            turn.savedCount = summary.total
             turns[index] = turn
+            return summary.total
+        } catch {
+            turns.append(LogTurn(kind: .failure, text: "保存失败，本轮记录尚未保存。全部草稿与照片已保留，请重试保存。"))
+            return 0
         }
-
-        return total
     }
 
     func removeTurn(_ id: UUID) {
@@ -211,6 +237,9 @@ final class LoggingViewModel: ObservableObject {
     }
 
     func reset() {
+        parsingGeneration = UUID()
+        parsingTask?.cancel()
+        parsingTask = nil
         turns = []
         inputText = ""
         isParsing = false

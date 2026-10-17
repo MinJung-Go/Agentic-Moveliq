@@ -118,6 +118,8 @@ enum TrainingGoal: String, Codable, CaseIterable {
 /// 一次训练（可能包含多个动作的多组记录）
 @Model
 final class WorkoutSession {
+    var durationMinutes: Int?
+    var planDayUUID: UUID?
     var uuid: UUID = UUID()
     var date: Date = Date()
     /// 训练主题，如「胸 + 三头」「深蹲日」
@@ -555,6 +557,9 @@ final class Plan {
 final class PlanDay {
     var uuid: UUID = UUID()
     var date: Date = Date()
+    /// Optional exact start; old date-only plans remain readable without invented times.
+    var scheduledStart: Date?
+    var durationMinutes: Int?
     var title: String = ""
     var statusRaw: String = PlanDayStatus.pending.rawValue
     var order: Int = 0
@@ -611,6 +616,7 @@ final class PlanExercise {
 /// 与 CoachAgent 的一条消息
 @Model
 final class ChatMessage {
+    var pendingLifeRevision: String?
     var uuid: UUID = UUID()
     var roleRaw: String = ChatRole.user.rawValue
     var content: String = ""

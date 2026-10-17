@@ -330,6 +330,7 @@ struct CoachContext: Equatable {
     var profileText: String = ""
     /// 当前数据库状态，不由历史摘要覆盖。
     var planState: String = ""
+    var lifeContext: String = ""
 }
 
 /// 计划草稿（function call 返回，确认后入库）
@@ -364,9 +365,11 @@ struct PlanDayDraft: Decodable, Equatable {
     var dayOffset: Int
     var title: String
     var exercises: [PlanExerciseDraft]
+    var startTime: String? = nil
+    var durationMinutes: Int? = nil
 
     enum CodingKeys: String, CodingKey {
-        case dayOffset, day_offset, title, exercises
+        case dayOffset, day_offset, title, exercises, startTime, durationMinutes
     }
 
     init(from decoder: Decoder) throws {
@@ -374,6 +377,8 @@ struct PlanDayDraft: Decodable, Equatable {
         self.dayOffset = Lenient.int(container, .dayOffset) ?? Lenient.int(container, .day_offset) ?? 0
         self.title = Lenient.string(container, .title) ?? "训练日"
         self.exercises = (try? container.decodeIfPresent([PlanExerciseDraft].self, forKey: .exercises)) ?? []
+        self.startTime = try container.decodeIfPresent(String.self, forKey: .startTime)
+        self.durationMinutes = try container.decodeIfPresent(Int.self, forKey: .durationMinutes)
     }
 
     init(dayOffset: Int, title: String, exercises: [PlanExerciseDraft]) {
@@ -438,13 +443,15 @@ struct PlanAdjustmentChange: Decodable, Equatable {
     var title: String? = nil
     var date: String? = nil
     var exercises: [PlanExerciseDraft]? = nil
+    var startTime: String? = nil
+    var durationMinutes: Int? = nil
     /// 相对今天的天数偏移
     var dayOffset: Int
     var action: String
     var detail: String
 
     enum CodingKeys: String, CodingKey {
-        case dayOffset, day_offset, action, detail, dayID, title, date, exercises
+        case dayOffset, day_offset, action, detail, dayID, title, date, exercises, startTime, durationMinutes
     }
 
     init(from decoder: Decoder) throws {
@@ -453,6 +460,8 @@ struct PlanAdjustmentChange: Decodable, Equatable {
         self.title = try container.decodeIfPresent(String.self, forKey: .title)
         self.date = try container.decodeIfPresent(String.self, forKey: .date)
         self.exercises = try container.decodeIfPresent([PlanExerciseDraft].self, forKey: .exercises)
+        self.startTime = try container.decodeIfPresent(String.self, forKey: .startTime)
+        self.durationMinutes = try container.decodeIfPresent(Int.self, forKey: .durationMinutes)
         self.dayOffset = Lenient.int(container, .dayOffset) ?? Lenient.int(container, .day_offset) ?? 0
         self.action = Lenient.string(container, .action) ?? "adjust"
         self.detail = Lenient.string(container, .detail) ?? ""

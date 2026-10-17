@@ -194,6 +194,8 @@ struct CoachAgent {
                         properties: [
                             "dayOffset": JSONSchema.integer(description: "相对今天的天数偏移，0 表示今天"),
                             "title": JSONSchema.string(description: "当天训练主题，如「胸 + 三头」"),
+                            "startTime": JSONSchema.string(description: "用户允许时段内的本地开始时间 HH:mm；先查生活/日历，未知不填"),
+                            "durationMinutes": JSONSchema.integer(description: "预计训练分钟，10–180；有具体开始时间时必须提供"),
                             "exercises": JSONSchema.array(
                                 items: JSONSchema.object(
                                     properties: [
@@ -227,6 +229,8 @@ struct CoachAgent {
                 "dayID": JSONSchema.string(description: "已有训练日UUID"),
                 "title": JSONSchema.string(description: "新主题/新计划名称"),
                 "date": JSONSchema.string(description: "绝对本地日期 yyyy-MM-dd"),
+                "startTime": JSONSchema.string(description: "新的本地开始时间 HH:mm；依据用户时段与日历，未知不填"),
+                "durationMinutes": JSONSchema.integer(description: "新的训练分钟，10–180；缩短训练需同步修改实际动作/组次"),
                 "detail": JSONSchema.string(description: "原因"),
                 "exercises": JSONSchema.array(items: JSONSchema.object(properties: [
                     "name": JSONSchema.string(description: "动作"),

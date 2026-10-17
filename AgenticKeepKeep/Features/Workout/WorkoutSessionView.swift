@@ -14,6 +14,7 @@ struct WorkoutSessionView: View {
     @StateObject private var model: WorkoutSessionViewModel
 
     @State private var isDiscardConfirmPresented = false
+    @State private var showsFeedback = false
 
     init(planDay: PlanDay) {
         self.planDay = planDay
@@ -51,8 +52,15 @@ struct WorkoutSessionView: View {
                 completeButton
             }
         }
-        .sheet(isPresented: $model.isSummaryPresented) {
+        .sheet(isPresented: $model.isSummaryPresented, onDismiss: {
+            if model.completedSessionID != nil { showsFeedback = true }
+        }) {
             summarySheet
+        }
+        .sheet(isPresented: $showsFeedback, onDismiss: { if model.completedSessionID != nil { dismiss() } }) {
+            NavigationStack {
+                CoachFeedbackView(sessionID: model.completedSessionID, dayID: planDay.uuid, suggestedMinutes: max(1, Int(model.summary.duration / 60)))
+            }
         }
         .confirmationDialog(
             "还没有完成任何一组",
@@ -328,11 +336,11 @@ struct WorkoutSessionView: View {
 
             VStack(spacing: Theme.Spacing.s) {
                 Button("保存并结束") {
-                    model.finish(planDay: planDay)
+                    guard model.finish(planDay: planDay) else { return }
                     model.isSummaryPresented = false
-                    dismiss()
                 }
                 .buttonStyle(PrimaryButtonStyle())
+                if let error = model.completionError { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
 
                 Button("继续练") { model.isSummaryPresented = false }
                     .buttonStyle(SecondaryButtonStyle())

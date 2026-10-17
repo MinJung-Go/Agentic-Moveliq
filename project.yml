@@ -66,6 +66,7 @@ targets:
       # 也必须一起编进来，否则小组件 target 编译不过。
       - path: AgenticKeepKeep/Core/Data/Models.swift
       - path: AgenticKeepKeep/Core/Data/WorkoutSessionModels.swift
+      - path: AgenticKeepKeep/Core/Data/CoachLifeModels.swift
       - path: AgenticKeepKeep/Core/Data/AppModelContainer.swift
       - path: AgenticKeepKeep/Core/Design/Theme.swift
     settings:

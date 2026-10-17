@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moveliq · 自动调整 · 第二版</title>
+<style>
+:root{color-scheme:light;--page:#eae8e1;--canvas:#fffefa;--panel:#f3f0e8;--text:#272723;--muted:#65645f;--metadata:#77766e;--line:#e8e5de;--accent:#f4b353;--on-accent:#241600;--width:390px;--size:17px}
+body.dark{color-scheme:dark;--page:#111210;--canvas:#191a18;--panel:#262723;--text:#f1f0e9;--muted:#b9b9af;--metadata:#a5a69b;--line:#363830;--accent:#dbab65}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--page);color:var(--text);font:var(--size)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;letter-spacing:0}button,input,select{font:inherit;color:inherit}button{cursor:pointer}button,select{touch-action:manipulation}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}button{background:none;border:0;padding:0}a{color:inherit}.svg-defs{position:absolute;width:0;height:0;overflow:hidden}.icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex:none}.icon.small{width:17px;height:17px}h1,h2,h3,p{margin:0}h1,h2,h3{font-weight:600}small{font-size:.76em;line-height:1.5}.muted{color:var(--muted)}.top{max-width:1300px;margin:auto;padding:36px 24px 12px}.brandline{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:12px}.brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}h1{font-size:28px;line-height:1.35}.top-note{font-size:14px;color:var(--muted);margin-top:8px}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:20px}.control{min-height:38px;border:1px solid var(--line);border-radius:9px;background:var(--canvas);padding:7px 12px;font-size:13px}.controls label{display:flex;align-items:center;gap:6px;min-height:44px}.controls select{border:0;background:none;min-height:28px;font-size:13px;max-width:160px}.controls input{accent-color:var(--text)}main{max-width:1300px;margin:auto;padding:20px 24px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--width)),1fr));gap:32px;align-items:start}.scene{min-width:0}.caption{width:min(100%,var(--width));margin:0 auto 12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}.scene-number{font-size:12px;color:var(--text);border-bottom:2px solid var(--accent);padding-bottom:2px}.phone{position:relative;width:min(100%,var(--width));height:844px;margin:auto;background:var(--canvas);border:1px solid var(--line);border-radius:36px;overflow:hidden;display:flex;flex-direction:column}.status{padding:16px 26px 0;min-height:44px;display:flex;align-items:flex-start;justify-content:space-between;font-size:13px;font-weight:600}.system{display:flex;gap:5px;align-items:center;height:16px}.signal{display:flex;gap:2px;height:10px;align-items:flex-end}.signal i{width:3px;background:var(--text);border-radius:1px}.signal i:nth-child(1){height:4px}.signal i:nth-child(2){height:6px}.signal i:nth-child(3){height:8px}.signal i:nth-child(4){height:10px}.battery{width:20px;height:10px;border:1px solid var(--text);border-radius:3px;padding:1px;position:relative;margin-left:3px}.battery:before{content:"";display:block;background:var(--text);width:13px;height:6px;border-radius:1px}.battery:after{content:"";position:absolute;right:-3px;top:2px;width:2px;height:4px;background:var(--text);border-radius:1px}.nav{display:grid;grid-template-columns:70px 1fr 70px;align-items:center;min-height:44px;padding:0 16px;font-size:15px}.nav strong{text-align:center;font-size:15px;font-weight:600}.back{display:flex;align-items:center;gap:2px;min-height:44px;text-align:left}.nav-trailing{justify-self:end;min-width:44px;min-height:44px;display:grid;place-items:center}.screen{padding:18px 24px 16px;overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;scrollbar-width:none}.screen::-webkit-scrollbar,.sheet::-webkit-scrollbar{display:none}.hero{position:relative;padding:5px 0 16px;min-height:120px}.hero h2{font-size:26px;line-height:1.3;padding-right:68px}.hero p{font-size:.82em;color:var(--muted);line-height:1.55;max-width:210px;margin-top:8px}.milo{position:absolute;width:72px;height:78px;object-fit:contain;right:-4px;top:7px}.mode{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:16px;padding:14px 16px;margin-bottom:12px}.mode-copy{flex:1;min-width:0}.mode-copy b{display:block;font-size:.94em;font-weight:600}.mode-copy small{display:block;color:var(--muted);margin-top:3px}.switch{position:relative;display:inline-flex;align-items:center;min-width:51px;min-height:44px;cursor:pointer;flex:none}.switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}.switch-track{display:block;width:51px;height:31px;border-radius:18px;background:#cfcec7;pointer-events:none;padding:3px}.dark .switch-track{background:#50524c}.switch-track:before{content:"";display:block;width:25px;height:25px;background:#fffefa;border-radius:50%;transition:transform .18s}.switch input:checked+.switch-track{background:var(--accent)}.switch input:checked+.switch-track:before{transform:translateX(20px)}.switch input:focus-visible+.switch-track{outline:3px solid var(--accent);outline-offset:4px}.section-heading{font-size:.71em;color:var(--metadata);margin:18px 0 4px}.section-heading:first-child{margin-top:0}.settings-row{width:100%;display:flex;align-items:center;gap:13px;min-height:64px;text-align:left;border-bottom:1px solid var(--line)}.row-copy{flex:1;min-width:0}.row-copy b{font-size:.94em;font-weight:500;display:block}.row-copy small{display:block;color:var(--muted);margin-top:3px;font-size:.71em}.chevron{width:15px;height:15px;color:var(--metadata)}.plan-row{min-height:54px;gap:10px}.plan-row .row-copy b{font-size:.82em}.plan-row .icon{width:19px;height:19px}.sync-options{display:flex;gap:10px;margin:12px 0 10px}.sync-option{position:relative;display:flex;align-items:center;gap:8px;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:11px;flex:1;cursor:pointer;font-size:.82em}.sync-option input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}.sync-option:has(input:checked){border-color:var(--text);background:var(--panel)}.sync-option .checkmark{width:14px;height:14px;opacity:0}.sync-option:has(input:checked) .checkmark{opacity:1}.microcopy{font-size:.71em;line-height:1.65;color:var(--muted)}.footer{padding:14px 24px 10px;background:var(--canvas);border-top:1px solid var(--line);flex:none}.primary{width:100%;min-height:50px;border-radius:12px;background:var(--accent);color:var(--on-accent);font-size:.94em;font-weight:600;padding:12px 16px;line-height:1.45}.primary:disabled{background:var(--panel);color:var(--muted);cursor:default}.footer-note{font-size:.65em;text-align:center;color:var(--muted);padding:9px 0 0;line-height:1.5}.text-button{display:block;width:100%;min-height:44px;font-size:.82em;color:var(--muted);padding:8px}.home-indicator{flex:none;height:18px;display:flex;justify-content:center;align-items:center;background:var(--canvas)}.home-indicator:after{content:"";width:112px;height:4px;background:var(--text);border-radius:4px}.avatar-line{display:flex;gap:8px;align-items:center;font-size:.71em;color:var(--metadata);margin:4px 0 20px}.avatar{width:26px;height:28px;object-fit:contain}.result-heading{font-size:26px;line-height:1.4;font-weight:600}.coach-copy{margin-top:13px;font-size:.88em;line-height:1.8;color:var(--muted)}.course{background:var(--panel);border-radius:16px;padding:18px;margin:20px 0 16px}.course-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.71em;color:var(--muted);margin-bottom:10px}.course h3{font-size:1em;font-weight:500}.course-meta{font-size:.71em;color:var(--muted);margin-top:5px}.time-change{display:flex;gap:15px;align-items:center;margin:20px 0 14px;flex-wrap:wrap;font-variant-numeric:tabular-nums}.old-time{font-size:23px;color:var(--metadata);text-decoration:line-through;text-decoration-thickness:1px}.new-time{font-size:43px;font-weight:600;line-height:1.1;color:var(--text)}.time-arrow{width:21px;color:var(--metadata)}.new-time:after{content:"";display:block;width:28px;height:3px;background:var(--accent);margin-top:10px;border-radius:2px}.course-note{font-size:.76em;line-height:1.6;color:var(--muted)}.receipt-row{display:flex;gap:12px;align-items:center;min-height:43px;font-size:.82em}.receipt-row .icon{width:17px;height:17px}.receipt-row span:nth-child(2){flex:1}.receipt-row small{color:var(--muted);font-size:.85em}.pending-icon{color:var(--accent)}.receipt-group{padding:0 3px 16px}.details{border-top:1px solid var(--line);margin-top:8px;font-size:.76em}.details summary{list-style:none;cursor:pointer;min-height:50px;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}.details summary::-webkit-details-marker{display:none}.details[open] summary>.icon{transform:rotate(90deg)}.detail-content{padding:0 0 18px;color:var(--muted);line-height:1.8}.detail-content p+p{margin-top:8px}.inline-action{font-size:inherit;min-height:44px;text-decoration:underline;text-underline-offset:4px}.retry{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;margin:6px 0;font-size:.82em}.boundary{display:inline-flex;align-items:center;gap:6px;font-size:.71em;background:var(--panel);padding:6px 10px;border-radius:7px;margin-bottom:14px}.proposal-title{font-size:26px;line-height:1.4}.proposal-date{display:grid;grid-template-columns:50px 1fr;gap:12px;align-items:baseline;margin-top:14px;font-size:.82em}.proposal-date .date-label{color:var(--metadata);font-size:.88em}.proposal-date .previous{text-decoration:line-through;color:var(--metadata)}.proposal-date .next{font-size:1.28em;font-weight:600}.proposal-separator{height:1px;background:var(--line);margin:14px 0}.proposal-description{font-size:.76em;color:var(--muted);line-height:1.75}.options{padding-top:4px}.choice{position:relative;display:flex;align-items:flex-start;gap:11px;padding:12px 0;cursor:pointer;font-size:.82em}.choice+.choice{border-top:1px solid var(--line)}.choice input{accent-color:var(--text);width:18px;height:18px;margin:3px 0 0;flex:none}.choice small{display:block;color:var(--muted);margin-top:4px}.sheet-overlay{position:absolute;inset:0;background:#0005;z-index:4;display:flex;align-items:flex-end;isolation:isolate}.sheet{background:var(--canvas);width:100%;max-height:calc(100% - 72px);border-radius:24px 24px 0 0;padding:10px 24px 22px;overflow:auto;scrollbar-width:none}.grabber{width:32px;height:4px;margin:0 auto 17px;border-radius:3px;background:var(--line)}.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:20px}.sheet-head h3{font-size:1.12em}.close{display:grid;place-items:center;width:44px;height:44px;margin-right:-10px;color:var(--muted)}.sheet-intro{font-size:.82em;color:var(--muted);line-height:1.7;margin-bottom:16px}.field{display:flex;align-items:center;gap:10px;justify-content:space-between;min-height:62px;border-bottom:1px solid var(--line);font-size:.82em}.field label{flex:1;min-width:0}.field .switch{flex:none}.field input[type=number]{width:74px;max-width:40%;text-align:center;font-size:1em;border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:9px 5px;min-height:44px;font-variant-numeric:tabular-nums}.field input[type=date],.field select{max-width:58%;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:7px;font-size:.88em;min-width:0}.field-note{font-size:.71em;color:var(--muted);line-height:1.8;margin:16px 0}.sheet .primary{margin-top:22px}.sub-setting{margin:18px 0 8px}.sub-setting h4{font-size:.82em;margin:0;font-weight:500}.toast{position:absolute;left:20px;right:20px;bottom:112px;padding:12px 16px;border-radius:12px;background:var(--text);color:var(--canvas);font-size:.76em;line-height:1.65;z-index:8;pointer-events:none}.single .top,.single .caption{display:none}.single main{padding:0;display:block;max-width:none;width:var(--width);margin:0}.single .scene{display:none}.single .scene.active-scene{display:block}.single .phone{width:100%;height:100dvh;border:0;border-radius:0;max-width:none}.single body{background:var(--canvas)}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}@media(max-width:600px){.top{padding:24px 20px 8px}main{padding:18px 16px 32px;gap:28px}h1{font-size:24px}.phone{height:844px}.caption{line-height:1.5}}
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true"><defs>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></symbol>
+<symbol id="i-next" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-short" viewBox="0 0 24 24"><path d="M6 7h12M6 12h8M6 17h5M18 12v7m-3-3 3 3 3-3"/></symbol>
+<symbol id="i-adjust" viewBox="0 0 24 24"><path d="M5 4v16M12 4v16M19 4v16"/><path d="M3 8h4m3 8h4m3-8h4" stroke-width="4"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="3"/><path d="M8 3.5v4m8-4v4M4 10h16m-11 4h.01m6 0h.01m-6 3h.01"/></symbol>
+<symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="m3 6 4-3m14 3-4-3M12 9v4l3 1m-9 5-2 2m14-2 2 2"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></symbol>
+</defs></svg>
+<header class="top">
+<div class="brandline"><span class="brand-dot"></span><span>Moveliq · 设计迭代 02</span></div>
+<h1>给训练一点弹性，让生活保持从容。</h1>
+<p class="top-note">自动调整：授权概览 / 完成回执 / 单次确认。日程与额度均为演示，保存只影响此页预览。</p>
+<div class="controls">
+<button class="control" id="theme" type="button">浅色 / 深色</button>
+<label class="control" for="width">宽度<select id="width"><option value="320">320pt</option><option value="390" selected>390pt</option><option value="430">430pt</option></select></label>
+<label class="control"><input id="large" type="checkbox">大字体</label>
+<label class="control" for="result-state">结果状态<select id="result-state"><option value="ready">全部完成</option><option value="partial">提醒未同步</option></select></label>
+</div>
+</header>
+<main>
+<section class="scene" data-scene="setup">
+<p class="caption"><span class="scene-number">01</span>授权概览 · 细节点开再调</p>
+<div class="phone">
+<div class="status"><span>9:41</span><div class="system" aria-label="网络与电量"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></div></div>
+<nav class="nav" aria-label="授权设置导航"><button class="back" data-toast="返回“我的训练与日常”。"><svg class="icon small"><use href="#i-back"/></svg>日常</button><strong>自动调整</strong><span></span></nav>
+<div class="screen">
+<div class="hero"><h2>留一点弹性，<br>训练跟上生活。</h2><p>小变化交给 Milo。<br>你的边界，始终有效。</p><img class="milo" src="../18-milo-home/assets/milo.png" alt="Milo"></div>
+<div class="mode"><div class="mode-copy"><b>范围内自动调整</b><small id="mode-description">超出范围时，先问我</small></div><label class="switch" aria-label="范围内自动调整"><input id="auto-mode" type="checkbox" checked><span class="switch-track"></span></label></div>
+<button class="settings-row plan-row" data-sheet="plan"><svg class="icon"><use href="#i-calendar"/></svg><span class="row-copy"><b>本周力量与跑步</b><small>只调整这份课程表</small></span><svg class="icon chevron"><use href="#i-next"/></svg></button>
+<p class="section-heading">Milo 可以自己处理</p>
+<button class="settings-row" data-sheet="move"><svg class="icon"><use href="#i-clock"/></svg><span class="row-copy"><b>调整时间</b><small id="move-summary">同一天 · 前后最多 90 分钟</small></span><svg class="icon chevron"><use href="#i-next"/></svg></button>
+<button class="settings-row" data-sheet="shorten"><svg class="icon"><use href="#i-short"/></svg><span class="row-copy"><b>缩短训练</b><small id="shorten-summary">至少 20 分钟 · 最多缩短 50%</small></span><svg class="icon chevron"><use href="#i-next"/></svg></button>
+<button class="settings-row" data-sheet="other"><svg class="icon"><use href="#i-adjust"/></svg><span class="row-copy"><b>其他调整</b><small id="other-summary">减重、跳过训练都先询问</small></span><svg class="icon chevron"><use href="#i-next"/></svg></button>
+<p class="section-heading">同时同步关联安排</p>
+<div class="sync-options">
+<label class="sync-option"><input id="sync-calendar" type="checkbox" checked><svg class="icon small"><use href="#i-calendar"/></svg><span>日历</span><svg class="icon checkmark"><use href="#i-check"/></svg></label>
+<label class="sync-option"><input id="sync-alarm" type="checkbox" checked><svg class="icon small"><use href="#i-alarm"/></svg><span>训练闹钟</span><svg class="icon checkmark"><use href="#i-check"/></svg></label>
+</div>
+<p class="microcopy">仅限 Moveliq 关联的训练日程与闹钟。</p>
+<button class="settings-row" data-sheet="limits"><span class="row-copy"><b>更多边界</b><small id="limits-summary">未来 7 天 · 每天最多 2 项</small></span><svg class="icon chevron"><use href="#i-next"/></svg></button>
+</div>
+<footer class="footer"><button class="primary" id="save-rules">保存我的范围</button><p class="footer-note">保护时段与准备缓冲始终有效</p></footer><div class="home-indicator"></div>
+<div class="toast" role="status" hidden></div>
+<div class="sheet-overlay" id="editor" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden><div class="sheet"><div class="grabber"></div><div class="sheet-head"><h3 id="sheet-title">调整时间</h3><button class="close" data-close aria-label="关闭编辑"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="sheet-content"></div><button class="primary" id="apply-sheet">完成</button></div></div>
+</div></section>
+<section class="scene" data-scene="result">
+<p class="caption"><span class="scene-number">02</span>自动调整 · 看清变了什么</p>
+<div class="phone">
+<div class="status"><span>9:41</span><div class="system" aria-label="网络与电量"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></div></div>
+<nav class="nav" aria-label="调整结果导航"><button class="back" data-toast="返回今日安排。"><svg class="icon small"><use href="#i-back"/></svg>今日</button><strong>安排有更新</strong><button class="nav-trailing" aria-label="查看调整记录" data-toast="查看本次自动调整记录。"><svg class="icon"><use href="#i-more"/></svg></button></nav>
+<div class="screen">
+<div class="avatar-line"><img class="avatar" src="../18-milo-home/assets/milo.png" alt=""><span>Milo · 16:40</span><span aria-hidden="true">／</span><span>已按你的范围调整</span></div>
+<h2 class="result-heading" id="result-heading">晚一点，<br>也能练得从容。</h2>
+<p class="coach-copy" id="result-copy">避开临时日程，往后挪一小时。<br>准备和休息的时间也留好了。</p>
+<div class="course"><div class="course-top"><span>明天 · 10月18日</span><span>45 分钟</span></div><h3>全身力量训练</h3><p class="course-meta">家中 · 哑铃与自重</p><div class="time-change"><span class="old-time">18:00</span><svg class="icon time-arrow"><use href="#i-arrow"/></svg><span class="new-time">19:00</span></div><p class="course-note">仍在你允许的训练时段内</p></div>
+<div class="receipt-group">
+<div class="receipt-row"><svg class="icon"><use href="#i-check"/></svg><span>课程表</span><small>已更新</small></div>
+<div class="receipt-row"><svg class="icon"><use href="#i-check"/></svg><span>关联日历</span><small>已同步</small></div>
+<div class="receipt-row"><svg class="icon" id="alarm-icon"><use href="#i-check"/></svg><span>训练闹钟</span><small id="alarm-status">18:45 提醒</small></div>
+<p class="microcopy" id="partial-note" hidden>提醒状态需要核对，课表与日历已经保留。</p>
+</div>
+<details class="details"><summary>这次为什么可以自动调整<svg class="icon small"><use href="#i-next"/></svg></summary><div class="detail-content"><p>你允许同一天前后移动最多 90 分钟。这次移动 60 分钟，是今天第 1 项调整，每天限额为 2 项。</p><p>准备缓冲、保护时段和最新日程均已核对。</p></div></details>
+<details class="details"><summary>查看原安排<svg class="icon small"><use href="#i-next"/></svg></summary><div class="detail-content"><p>10月18日 18:00–18:45 · 全身力量训练</p><p>原时间目前有冲突。想恢复时，Milo 会先重新核对日程。</p><button class="inline-action" data-toast="Milo 会先核对最新日程，再与你讨论恢复或替代安排。">和 Milo 讨论恢复</button></div></details>
+</div>
+<footer class="footer"><button class="primary" id="result-primary">查看今日安排</button><button class="text-button" id="edit-from-result">调整我的授权范围</button></footer><div class="home-indicator"></div><div class="toast" role="status" hidden></div>
+</div></section>
+<section class="scene" data-scene="confirm">
+<p class="caption"><span class="scene-number">03</span>超出范围 · 这次由你决定</p>
+<div class="phone">
+<div class="status"><span>9:41</span><div class="system" aria-label="网络与电量"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></div></div>
+<nav class="nav" aria-label="单次确认导航"><button class="back" data-toast="保留待确认建议，返回今日安排。"><svg class="icon small"><use href="#i-back"/></svg>今日</button><strong>训练调整</strong><span></span></nav>
+<div class="screen">
+<div class="avatar-line"><img class="avatar" src="../18-milo-home/assets/milo.png" alt=""><span>Milo · 17:10</span></div>
+<span class="boundary" id="confirmation-state"><svg class="icon small"><use href="#i-info"/></svg><span>需要跨天，先问问你</span></span>
+<h2 class="proposal-title">今晚安排不开了，<br>明天继续，怎么样？</h2>
+<p class="coach-copy">你只允许同一天移动。<br>这次我先留好方案，等你决定。</p>
+<div class="course"><div class="course-top"><span>全身力量训练</span><span>尚未修改</span></div>
+<div class="proposal-date"><span class="date-label">原安排</span><div class="previous">10月18日 · 18:00</div></div>
+<div class="proposal-date"><span class="date-label">建议</span><div class="next">10月19日 · 19:00</div></div>
+<div class="proposal-separator"></div><p class="proposal-description">45 分钟缩短为 30 分钟。<br>确认后同步关联日历与训练闹钟。</p></div>
+<div class="options" role="radiogroup" aria-label="这次如何安排">
+<label class="choice"><input type="radio" name="next-step" value="move" checked><span>明晚练 30 分钟<small>给恢复和日常安排留出余地</small></span></label>
+<label class="choice"><input type="radio" name="next-step" value="skip"><span>这次先休息<small>跳过这次，不堆到下次补练</small></span></label>
+</div>
+<p class="microcopy" style="margin-top:16px">这次确认只对这项调整生效。</p>
+</div>
+<footer class="footer"><button class="primary" id="confirm-once">确认这次调整</button><button class="text-button" data-toast="保留原计划，继续和 Milo 讨论其他方案。">先不改，再聊聊</button></footer><div class="home-indicator"></div><div class="toast" role="status" hidden></div>
+</div></section>
+</main>
+<template id="sheet-move">
+<p class="sheet-intro">只移动尚未开始的训练。多次调整也按最初的时间累计。</p>
+<div class="field"><span>允许自动调整时间</span><label class="switch" aria-label="允许自动调整时间"><input type="checkbox" data-flag="move"><span class="switch-track"></span></label></div>
+<div class="field"><label for="edit-shift">前后最多移动 · 分钟</label><input id="edit-shift" data-value="shift" type="number" min="1" max="10080" required></div>
+<div class="field"><label for="edit-days">最多跨几天</label><input id="edit-days" data-value="days" type="number" min="0" max="7" required></div>
+<p class="field-note">设为 0，仅在同一天调整。保护时段和准备缓冲始终保留。</p>
+</template>
+<template id="sheet-shorten">
+<p class="sheet-intro">时间紧张时，保留能完成的训练。时长底线和缩短幅度会同时生效。</p>
+<div class="field"><span>允许自动缩短训练</span><label class="switch" aria-label="允许自动缩短训练"><input type="checkbox" data-flag="shorten"><span class="switch-track"></span></label></div>
+<div class="field"><label for="edit-minimum">至少保留 · 分钟</label><input id="edit-minimum" data-value="minimum" type="number" min="10" max="180" required></div>
+<div class="field"><label for="edit-percent">最多缩短 · %</label><input id="edit-percent" data-value="percent" type="number" min="1" max="90" required></div>
+<p class="field-note">相对最初的时长计算；不会通过反复缩短绕过你的底线。</p>
+</template>
+<template id="sheet-other">
+<p class="sheet-intro">你可以只开放需要的调整。换动作、加重量、增加次数，仍由你决定。</p>
+<div class="field"><span>降低已有动作的重量</span><label class="switch" aria-label="允许降低已有动作的重量"><input type="checkbox" data-flag="weight"><span class="switch-track"></span></label></div>
+<div class="field"><label for="edit-weight">最多降低 · %</label><input id="edit-weight" data-value="weightPercent" type="number" min="1" max="50" required></div>
+<div class="field"><span>允许跳过本次训练</span><label class="switch" aria-label="允许跳过本次训练"><input type="checkbox" data-flag="skip"><span class="switch-track"></span></label></div>
+<p class="field-note">仅调整未开始的训练。已有训练记录始终保留；身体不适或信息不清楚时，Milo 会先询问。</p>
+</template>
+<template id="sheet-limits">
+<p class="sheet-intro">给自动调整一个清楚的时间范围。你随时可以停用。</p>
+<div class="field"><label for="edit-horizon">只调整未来 · 天</label><input id="edit-horizon" data-value="horizon" type="number" min="1" max="14" required></div>
+<div class="field"><label for="edit-budget">每天最多 · 项训练</label><input id="edit-budget" data-value="budget" type="number" min="1" max="20" required></div>
+<div class="field"><label for="edit-lead">开练前停止调整 · 分钟</label><input id="edit-lead" data-value="lead" type="number" min="0" max="1440" required></div>
+<div class="field"><label for="edit-expiry">授权有效至</label><input id="edit-expiry" data-value="expiry" type="date" required></div>
+<p class="field-note">计划、日程或账号发生变化时会重新核对。你停用后，尚未执行的自动调整不再继续。</p>
+<button class="text-button" id="disable-authority">停用并清除授权</button>
+</template>
+<template id="sheet-plan"><p class="sheet-intro">只允许调整你选择的课程表。新课程表需要重新选择。</p><div class="field"><label for="edit-plan">适用课程表</label><select id="edit-plan"><option>本周力量与跑步</option></select></div><p class="field-note">其他课程表和普通生活日程不会自动修改。</p></template>
+<script>
+const cfg={enabled:true,move:true,shorten:true,weight:false,skip:false,shift:90,days:0,minimum:20,percent:50,weightPercent:20,horizon:7,budget:2,lead:30,expiry:'2026-11-17',calendar:true,alarm:true};
+const editor=document.getElementById('editor'),content=document.getElementById('sheet-content');
+let returnFocus=null,activeSheet='';
+function toast(element,message){const phone=element.closest('.phone'),box=phone.querySelector('.toast');box.textContent=message;box.hidden=false;clearTimeout(box.dismiss);box.dismiss=setTimeout(()=>{box.hidden=true;},4200);}
+function refresh(){document.getElementById('auto-mode').checked=cfg.enabled;document.getElementById('mode-description').textContent=cfg.enabled?'超出范围时，先问我':'每次调整都先问我';document.getElementById('move-summary').textContent=cfg.move?(cfg.days===0?'同一天':'最多跨 '+cfg.days+' 天')+' · 前后最多 '+cfg.shift+' 分钟':'需要先询问';document.getElementById('shorten-summary').textContent=cfg.shorten?'至少 '+cfg.minimum+' 分钟 · 最多缩短 '+cfg.percent+'%':'需要先询问';const allowed=[];if(cfg.weight)allowed.push('减重最多 '+cfg.weightPercent+'%');if(cfg.skip)allowed.push('可跳过本次');document.getElementById('other-summary').textContent=allowed.length?allowed.join(' · '):'减重、跳过训练都先询问';document.getElementById('limits-summary').textContent='未来 '+cfg.horizon+' 天 · 每天最多 '+cfg.budget+' 项';document.getElementById('sync-calendar').checked=cfg.calendar;document.getElementById('sync-alarm').checked=cfg.alarm;}
+function openSheet(name,trigger){activeSheet=name;returnFocus=trigger||document.activeElement;const titles={move:'调整时间',shorten:'缩短训练',other:'其他调整',limits:'更多边界',plan:'适用课程表'};document.getElementById('sheet-title').textContent=titles[name];content.replaceChildren(document.getElementById('sheet-'+name).content.cloneNode(true));content.querySelectorAll('[data-value]').forEach(input=>input.value=cfg[input.dataset.value]);content.querySelectorAll('[data-flag]').forEach(input=>input.checked=cfg[input.dataset.flag]);editor.hidden=false;editor.closest('.phone').querySelector('.screen').inert=true;editor.querySelector('[data-close]').focus({preventScroll:true});const disable=content.querySelector('#disable-authority');if(disable)disable.addEventListener('click',()=>{cfg.enabled=false;cfg.move=false;cfg.shorten=false;cfg.weight=false;cfg.skip=false;cfg.calendar=false;cfg.alarm=false;refresh();closeSheet();toast(editor,'设计预览：已停用并清除授权。');});}
+function closeSheet(){editor.hidden=true;editor.closest('.phone').querySelector('.screen').inert=false;if(returnFocus&&returnFocus.isConnected)returnFocus.focus({preventScroll:true});}
+document.querySelectorAll('[data-sheet]').forEach(button=>button.addEventListener('click',()=>openSheet(button.dataset.sheet,button)));
+editor.querySelector('[data-close]').addEventListener('click',closeSheet);
+editor.addEventListener('click',event=>{if(event.target===editor)closeSheet();});
+document.getElementById('apply-sheet').addEventListener('click',()=>{for(const input of content.querySelectorAll('[data-value]')){if(!input.checkValidity()){input.reportValidity();return;}}content.querySelectorAll('[data-value]').forEach(input=>cfg[input.dataset.value]=input.type==='number'?Number(input.value):input.value);content.querySelectorAll('[data-flag]').forEach(input=>cfg[input.dataset.flag]=input.checked);refresh();closeSheet();});
+document.addEventListener('keydown',event=>{if(editor.hidden)return;if(event.key==='Escape'){event.preventDefault();closeSheet();}if(event.key==='Tab'){const items=[...editor.querySelectorAll('button,input,select')].filter(item=>!item.disabled&&item.getClientRects().length),first=items[0],last=items[items.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});
+document.getElementById('auto-mode').addEventListener('change',event=>{cfg.enabled=event.target.checked;refresh();});
+document.getElementById('sync-calendar').addEventListener('change',event=>cfg.calendar=event.target.checked);
+document.getElementById('sync-alarm').addEventListener('change',event=>cfg.alarm=event.target.checked);
+document.getElementById('save-rules').addEventListener('click',event=>{if(cfg.enabled&&!cfg.move&&!cfg.shorten&&!cfg.weight&&!cfg.skip){toast(event.currentTarget,'请至少选择一种可以自动处理的调整。');return;}toast(event.currentTarget,cfg.enabled?'设计预览：已保存当前范围。':'设计预览：每次调整都先询问。');});
+document.querySelectorAll('[data-toast]').forEach(button=>button.addEventListener('click',()=>toast(button,button.dataset.toast)));
+document.getElementById('edit-from-result').addEventListener('click',event=>{const setup=document.querySelector('[data-scene="setup"]');setup.scrollIntoView({behavior:'smooth',block:'nearest'});openSheet('limits',event.currentTarget);});
+function resultState(partial){document.getElementById('result-state').value=partial?'partial':'ready';document.getElementById('result-heading').innerHTML=partial?'训练已改好，<br>提醒还没跟上。':'晚一点，<br>也能练得从容。';document.getElementById('result-copy').innerHTML=partial?'课表和日历已更新。<br>提醒暂时没有同步成功，你可以核对后重试。':'避开临时日程，往后挪一小时。<br>准备和休息的时间也留好了。';document.getElementById('alarm-status').textContent=partial?'待处理':'18:45 提醒';document.querySelector('#alarm-icon use').setAttribute('href',partial?'#i-info':'#i-check');document.getElementById('alarm-icon').classList.toggle('pending-icon',partial);document.getElementById('result-primary').textContent=partial?'重试提醒同步':'查看今日安排';document.getElementById('partial-note').hidden=!partial;}
+document.getElementById('result-state').addEventListener('change',event=>resultState(event.target.value==='partial'));
+document.getElementById('result-primary').addEventListener('click',event=>{if(document.getElementById('result-state').value==='partial'){resultState(false);toast(event.currentTarget,'设计预览：只重试了未完成的提醒同步。');}else toast(event.currentTarget,'回到今日安排，查看更新后的训练。');});
+document.getElementById('confirm-once').addEventListener('click',event=>{const choice=document.querySelector('input[name="next-step"]:checked').value;document.querySelector('#confirmation-state span').textContent='已确认 · 仅本次';event.currentTarget.textContent=choice==='skip'?'已确认本次休息':'已确认这次调整';event.currentTarget.disabled=true;document.querySelectorAll('input[name="next-step"]').forEach(input=>input.disabled=true);toast(event.currentTarget,'设计预览：仅本次生效，未扩大自动授权。');});
+document.getElementById('theme').addEventListener('click',()=>document.body.classList.toggle('dark'));
+document.getElementById('width').addEventListener('change',event=>document.documentElement.style.setProperty('--width',event.target.value+'px'));
+document.getElementById('large').addEventListener('change',event=>document.documentElement.style.setProperty('--size',event.target.checked?'22px':'17px'));
+const params=new URLSearchParams(location.search);if(params.get('theme')==='dark')document.body.classList.add('dark');if(params.get('size')==='large'){document.documentElement.style.setProperty('--size','22px');document.getElementById('large').checked=true;}if(['320','390','430'].includes(params.get('width'))){document.documentElement.style.setProperty('--width',params.get('width')+'px');document.getElementById('width').value=params.get('width');}if(params.get('state')==='partial')resultState(true);if(params.get('view')==='single'){document.documentElement.classList.add('single');document.querySelector('[data-scene="'+(['setup','result','confirm'].includes(params.get('scene'))?params.get('scene'):'setup')+'"]').classList.add('active-scene');}if(['move','shorten','other','limits','plan'].includes(params.get('sheet')))openSheet(params.get('sheet'));
+refresh();
+</script>
+</body>
+</html>

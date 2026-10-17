@@ -68,10 +68,11 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
                 guard !Task.isCancelled, let self, self.generation == generation else { return }
                 self.finish(.failure(LLMError.network("网页操作超时，请重试")))
             }
-        } catch { finish(.failure(error)) }
+        } catch { if self.generation == generation { finish(.failure(error)) } }
     }
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard self.webView === webView else { decisionHandler(.cancel); return }
         guard let url = navigationAction.request.url, LocalBrowserPolicy.allows(url),
               navigationAction.request.httpMethod == "GET",
               navigationAction.targetFrame != nil else {
@@ -82,6 +83,7 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
     }
     func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
                  decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        guard self.webView === webView else { decisionHandler(.cancel); return }
         guard let url = response.response.url, LocalBrowserPolicy.allows(url),
               response.canShowMIMEType, response.response.mimeType == "text/html" else {
             decisionHandler(.cancel); notice = "暂不读取此类页面或附件。"; loading = false; return
@@ -89,15 +91,17 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
         decisionHandler(.allow)
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        guard self.webView === webView else { return }
         navigationGeneration = UUID()
         loading = true
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard self.webView === webView else { return }
         loading = false
         title = String((webView.url?.host ?? "网页搜索").prefix(50))
     }
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed(error) }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { failed(error) }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { if self.webView === webView { failed(error) } }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { if self.webView === webView { failed(error) } }
     private func failed(_ error: Error) { loading = false; notice = "网页暂时无法加载。可以重试，或返回对话。" }
     func extract() async {
         guard let web = webView, !loading, let url = web.url, LocalBrowserPolicy.allows(url) else { return }

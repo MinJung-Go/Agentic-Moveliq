@@ -16,6 +16,8 @@ final class AppState: ObservableObject {
     /// 首页选中的照片只作为待发送附件，记录弹窗接收后清空。
     @Published var pendingLogPhoto: Data?
     @Published var toast: String?
+    @Published var showsCoachDay = false
+    @Published var showsMiloChat = false
 
     /// 显示一条短暂提示
     func showToast(_ message: String) {

@@ -239,6 +239,9 @@ struct MetricDraft {
 
 struct NoteDraft {
     var text: String = ""
+    /// A failed fallback save remains an editable draft, including its original attachment.
+    var photoData: Data? = nil
+    var failureReason: String = ""
 }
 
 // MARK: - 文本 ↔ 数值

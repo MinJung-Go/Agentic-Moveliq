@@ -15,6 +15,8 @@ final class WorkoutSessionViewModel: ObservableObject {
     @Published var draftWeightText: String
     @Published var draftRepsText: String
     @Published var isSummaryPresented = false
+    @Published private(set) var completedSessionID: UUID?
+    @Published private(set) var completionError: String?
 
     let draft: WorkoutSessionDraft
     /// 计划日已被删除 / 没有动作时给出说明
@@ -181,45 +183,54 @@ final class WorkoutSessionViewModel: ObservableObject {
     /// 写回正式记录，并把训练日标为已完成。返回是否真的写了
     @discardableResult
     func finish(planDay: PlanDay?) -> Bool {
+        guard completedSessionID == nil else { return false }
         let summary = engine.summary()
         guard summary.setCount > 0 else {
             discard()
             return false
         }
 
-        let session = WorkoutSession(date: draft.startedAt, title: draft.title)
-        context.insert(session)
+        do {
+            try context.save()
+            let session = WorkoutSession(date: draft.startedAt, title: draft.title)
+            session.planDayUUID = planDay?.uuid
+            session.durationMinutes = max(1, Int(summary.duration / 60))
+            context.insert(session)
 
-        // 每个动作合并成一行：取**最重的一组**当代表，组数按实际
-        // （逐组的实情留在 SetLog 里，记录列表不该展开成几十行）
-        for (order, exercise) in engine.exercises.enumerated() {
-            let sets = engine.sets(for: exercise)
-            guard !sets.isEmpty else { continue }
+            // 每个动作合并成一行：取**最重的一组**当代表，组数按实际
+            // （逐组的实情留在 SetLog 里，记录列表不该展开成几十行）
+            for (order, exercise) in engine.exercises.enumerated() {
+                let sets = engine.sets(for: exercise)
+                guard !sets.isEmpty else { continue }
 
-            let representative = sets.max { $0.weightKg < $1.weightKg } ?? sets[0]
-            let record = ExerciseSet(
-                exerciseName: exercise.name,
-                weightKg: representative.weightKg,
-                reps: representative.reps,
-                setCount: sets.count,
-                order: order
-            )
-            record.session = session
-            context.insert(record)
+                let representative = sets.max { $0.weightKg < $1.weightKg } ?? sets[0]
+                let record = ExerciseSet(
+                    exerciseName: exercise.name,
+                    weightKg: representative.weightKg,
+                    reps: representative.reps,
+                    setCount: sets.count,
+                    order: order
+                )
+                record.session = session
+                context.insert(record)
 
-            // 把逐组明细挂到这一行上 —— 从草稿转正
-            for log in draft.logs where log.exerciseUUID == exercise.id {
-                log.exerciseSet = record
-                log.draft = nil
+                // 把逐组明细挂到这一行上 —— 从草稿转正
+                for log in draft.logs where log.exerciseUUID == exercise.id {
+                    log.exerciseSet = record
+                    log.draft = nil
+                }
             }
-        }
 
-        planDay?.status = .done
-        context.delete(draft)
-        try? context.save()
+            planDay?.status = .done
+            context.delete(draft)
+            try context.save()
+            completedSessionID = session.uuid
+            completionError = nil
+            NotificationCenter.default.post(name: .coachLifeChanged, object: nil)
 
-        Haptics.success()
-        return true
+            Haptics.success()
+            return true
+        } catch { context.rollback(); completionError = "训练尚未保存，请重试。\(error.localizedDescription)"; return false }
     }
 
     /// 一组都没勾就退出：不留痕迹

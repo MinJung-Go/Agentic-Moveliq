@@ -15,15 +15,17 @@
 
 ---
 
-> 当前开发：语音输入与 GLM 实时通话；第 31 轮切换已备案域名 `https://moveliq.work/api`，旧安装版本地址不会自动更新。[0.5.14（35）HTTPS IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/37917041170/artifacts/11610593869) 已构建并校验，需重签安装。进度和验证见 [域名切换清单](docs/31-domain-https/checklist.md)，服务接入见 [服务说明](docs/29-auth-service/integration.md)。
+> 最近已记录的安装版本：**0.5.17（38）**，见[第 33 轮发布与验证](docs/33-home-report-readability/checklist.md)。当前第 34 轮已按确认的设计接入动态教练、生活约束与反馈、日历/浏览器/地图/闹钟/Apple 音乐插件及 Siri 入口，并修复记录可靠性问题；源码尚未提交，本轮 iOS 构建、XCTest 和真机验收待完成，见[本轮清单](docs/34-agent-system-plugins/checklist.md)。默认服务为 `https://moveliq.work/api`；本地模型下载与加载保持停用。
 
 ## 界面示意
+
+第 34 轮追加“预设范围内自动调整、其余确认”：授权存储与资格判定器已编写，[新增设置与回执设计稿](docs/34-agent-system-plugins/design.autonomy.html) 待确认后接入自动执行；示例额度未写入 App。
 
 [![Milo 本地图文与网页搜索设计演示](docs/19-local-milo/design-preview.gif)](docs/19-local-milo/design-video.mp4)
 
 [观看 24 秒设计短片（MP4）](docs/19-local-milo/design-video.mp4) · [六屏交互设计稿](docs/19-local-milo/design.html)
 
-> 以上为设计稿演示，非真机录屏。第 19 轮本地图文与浏览器功能正在验证，不能视为已通过 iPhone 性能或可用性验收。
+> 以上为第 19 轮历史设计稿演示，非真机录屏。当前本地模型保持停用，浏览器恢复方案见第 34 轮；此演示不能视为当前 App 功能或真机验收结果。
 
 Milo 是 Moveliq 的运动伙伴，默认出现在首页；称呼与相处方式可在设置中自定义。新版形象采用淡蓝小糯团、黄色手环与同色浅腹肌。
 
@@ -64,9 +66,16 @@ HTML 文件可下载后在浏览器打开；GitHub 文件页展示的是源码�
 
 ### 方式一：下载未签名 IPA（不需要 Mac）
 
+[0.5.17（38）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/38730753026/artifacts/11970298290)：第 33 轮清单记录了该构建的 XCTest、音频专项、归档和产物核验结果；需侧载重签名，界面/语音等真机复验仍有待办。未打包的第 34 轮改动不包含在此版本中。
+
+<details>
+<summary>历史本地模型版本（当前已停用）</summary>
+
 以下为历史本地模型版本；当前分支已停止本地模型下载与加载。历史版本使用 **Qwen3.5-0.8B MLX 4bit**：从 ModelScope 下载约 **645 MB**，保持原有角色、历史与工具流程。历史本地模型分支默认上下文已适配 **16K**（[扩容清单](docs/23-local-context/checklist.md)，尚未打包）；下方已发布的 0.5.1（22）仍为 8K。升级后需下载新模型；旧 2B 不会作为新版启用。[本轮修复与验证](docs/22-local-memory/checklist.md)。[下载 IPA · 0.5.1（22）](https://github.com/MinJung-Go/Agentic-KeepKeep/actions/runs/35483344157/artifacts/10596852788)：397 项 iOS 单测通过，Release 归档成功；L14 与工具／图文质量待同设备复测。下方为上一版本。
 
 [MLX 正式接入 IPA · 0.5.0（21）](https://github.com/MinJung-Go/Agentic-KeepKeep/actions/runs/35380521646/artifacts/10562367633)：393 项 iOS 单测通过，正式 App 已接入 MLX 文字／单图推理与后台下载。默认从 ModelScope 下载约 1.74 GB 新模型，旧 GGUF 不兼容；图文真机性能与任务质量仍待验收。[需求与 checklist](docs/21-mlx-production/checklist.md) · [安装说明与验证边界](docs/21-mlx-production/validation.md)。
+
+</details>
 
 仓库自带 GitHub Actions 流水线，打 tag 会自动构建并产出未签名 IPA：
 
@@ -77,7 +86,7 @@ HTML 文件可下载后在浏览器打开；GitHub 文件页展示的是源码�
 
 ### 方式二：从源码构建
 
-需要 macOS + Xcode 16.4（Swift 6.1）或更新版本，以及 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：
+需要 macOS + Xcode 26 或更新版本（用于验证 AlarmKit；App 最低运行版本仍为 iOS 17），以及 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：
 
 ```bash
 brew install xcodegen
@@ -88,7 +97,7 @@ xcodegen generate
 open AgenticKeepKeep.xcodeproj
 ```
 
-正式 App 通过 Swift Package Manager 链接 MLX Swift 0.31.3 / MLX Swift LM 2.31.3，首次构建会下载依赖；保留推理包依赖以便以后恢复，但本轮不再下载或加载模型权重。
+正式 App 通过 Swift Package Manager 链接私有推理包，URL 与固定 revision 以 `project.yml` 为准；首次构建会解析其依赖。保留推理包以便以后恢复，当前不下载或加载模型权重。
 
 `.xcodeproj` 由 `project.yml` 生成，不进版本库。在 Xcode 中选择自己的开发团队后即可运行到真机。
 
@@ -160,4 +169,4 @@ CI 产出的 IPA 带 ad-hoc 签名，用于携带 HealthKit / App Group 能力�
 
 ### 本地推理引擎
 
-App 保留独立的 [MiloInference 私有 Swift Package](https://github.com/MinJung-Go/MiloInference)，集中维护 MLX、内存保护、模型校验和性能诊断。业务提示词、工具执行与下载交互保留在 App。App 已改为固定提交的远端依赖，本仓库不再保存引擎源码副本。CI 使用专属只读部署密钥；本地构建需具有私有仓库读取权限。[接入说明](docs/24-inference-package/integration.md)。Apple CI／真机回归仍待完成。[拆分清单](docs/24-inference-package/checklist.md)。
+App 保留独立的 [MiloInference 私有 Swift Package](https://github.com/MinJung-Go/MiloInference)，集中维护 MLX、内存保护、模型校验和性能诊断。业务提示词、工具执行与下载交互保留在 App。App 已改为固定提交的远端依赖，本仓库不再保存引擎源码副本。CI 使用专属只读部署密钥；本地构建需具有私有仓库读取权限。[接入说明](docs/24-inference-package/integration.md) · [拆分轮次的历史清单](docs/24-inference-package/checklist.md)。当前运行入口与验证状态以最新轮次为准，保留依赖不代表本地推理已重新启用。

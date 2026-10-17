@@ -3,10 +3,11 @@ import Foundation
 /// The caller owns database/network access; the Agent sees only bounded summaries.
 struct CoachTools {
     var webSearchEnabled = false
+    var pluginDefinitions: [LLMTool] = []
     var onActivity: @MainActor (CoachToolActivity) -> Void = { _ in }
     var execute: @MainActor (LLMToolCall) async throws -> CoachToolResult
 
-    var definitions: [LLMTool] { [Self.records] + (webSearchEnabled ? [Self.search, Self.reader] : []) }
+    var definitions: [LLMTool] { [Self.records] + (webSearchEnabled ? [Self.search, Self.reader] : []) + pluginDefinitions }
 
     static let records = LLMTool(
         name: "query_local_records",
@@ -70,7 +71,7 @@ struct CoachToolClient: LLMClient {
                     var request = initial
                     var searches = 0
                     var reads = 0
-                    let finalRound = tools.webSearchEnabled ? 3 : 2
+                    let finalRound = tools.pluginDefinitions.isEmpty ? (tools.webSearchEnabled ? 3 : 2) : 5
                     var sources: [URL] = []
                     var drafts: [LLMToolCall] = []
                     for round in 0...finalRound {
@@ -157,7 +158,7 @@ struct CoachToolClient: LLMClient {
                             var result = CoachToolResult(content: "本次工具未执行。请缩小查询范围。")
                             if call.name == CoachAgent.createPlanTool.name || call.name == CoachAgent.adjustPlanTool.name {
                                 result.content = "草稿已暂存，等待用户确认；尚未写入课程表。"
-                            } else if index < 2 && call.argumentsJSON.utf8.count <= 512 &&
+                            } else if index < (tools.pluginDefinitions.isEmpty ? 2 : 4) && call.argumentsJSON.utf8.count <= (tools.pluginDefinitions.contains(where: { $0.name == call.name }) ? 4096 : 512) &&
                                         tools.definitions.contains(where: { $0.name == call.name }) {
                                 if call.name == CoachTools.search.name && searches >= 1 {
                                     result.content = "本轮联网搜索已达上限，未再次搜索。"
@@ -181,13 +182,15 @@ struct CoachToolClient: LLMClient {
                                             await tools.onActivity(activity)
                                             throw CancellationError()
                                         }
-                                        result = CoachToolResult(content: "查询失败，未获取可用结果。不能视为没有记录或已完成搜索。", failed: true)
+                                        let detail = (error as? CoachPluginError)?.localizedDescription ?? "未获取可用结果。"
+                                        result = CoachToolResult(content: "工具未完成：\(detail) 不能视为没有记录或操作已成功。", failed: true)
                                     }
                                     await tools.onActivity(activity)
                                 }
                             }
                             for url in result.sources where !sources.contains(url) { sources.append(url) }
-                            request.messages.append(.tool(callId: call.id, content: Self.bounded(result.content, bytes: call.name == CoachTools.search.name ? GLMWebSearch.toolResultByteLimit : (call.name == CoachTools.reader.name ? GLMWebReader.toolResultByteLimit : 1800))))
+                            let maximum = call.name == CoachPluginTools.life.name ? 22_000 : (tools.pluginDefinitions.contains(where: { $0.name == call.name }) ? 12_000 : 1800)
+                            request.messages.append(.tool(callId: call.id, content: Self.bounded(result.content, bytes: call.name == CoachTools.search.name ? GLMWebSearch.toolResultByteLimit : (call.name == CoachTools.reader.name ? GLMWebReader.toolResultByteLimit : maximum))))
                         }
                         if round == finalRound - 1 { request.tools = initial.tools.filter { $0.name == CoachAgent.createPlanTool.name || $0.name == CoachAgent.adjustPlanTool.name } }
                         // Shrink only ephemeral results, with an explicit incompleteness marker.
