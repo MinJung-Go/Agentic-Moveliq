@@ -131,6 +131,8 @@ final class CoachAutomationPolicyTests: XCTestCase {
         XCTAssertEqual(decide([item, item]), .needsConfirmation(.identity))
         item.proposed = item.current
         XCTAssertEqual(decide([item]), .needsConfirmation(.unsupported))
+        item.proposed.note = "只有说明变化，未改变安排"
+        XCTAssertEqual(decide([item]), .needsConfirmation(.unsupported))
         item.proposed.status = "skipped"
         XCTAssertEqual(decide([item]), .automatic)
     }

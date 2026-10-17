@@ -15,11 +15,11 @@
 
 ---
 
-> 最近已记录的安装版本：**0.5.17（38）**，见[第 33 轮发布与验证](docs/33-home-report-readability/checklist.md)。当前第 34 轮已按确认的设计接入动态教练、生活约束与反馈、日历/浏览器/地图/闹钟/Apple 音乐插件及 Siri 入口，并修复记录可靠性问题；源码尚未提交，本轮 iOS 构建、XCTest 和真机验收待完成，见[本轮清单](docs/34-agent-system-plugins/checklist.md)。默认服务为 `https://moveliq.work/api`；本地模型下载与加载保持停用。
+> 最近已记录的安装版本：**0.5.17（38）**，见[第 33 轮发布与验证](docs/33-home-report-readability/checklist.md)。第 34 轮已接入动态教练、生活约束与反馈、日历/浏览器/地图/闹钟/Apple 音乐插件、Siri 入口和预设范围内自动调整，并修复记录可靠性问题；**0.5.18（39）正在进行原生 CI 与 IPA 构建**，实际结果见[本轮清单](docs/34-agent-system-plugins/checklist.md)。默认服务为 `https://moveliq.work/api`；本地模型下载与加载保持停用。
 
 ## 界面示意
 
-第 34 轮追加“预设范围内自动调整、其余确认”：授权存储与资格判定器已编写，[新增设置与回执设计稿](docs/34-agent-system-plugins/design.autonomy.html) 待确认后接入自动执行；示例额度未写入 App。
+第 34 轮追加“预设范围内自动调整、其余确认”：[第二版设置与回执设计稿](docs/34-agent-system-plugins/design.autonomy.html) 已确认并接入原生页面与执行器；实际额度由用户保存，示例额度未写入 App。系统插件工具用于文字及语音转文字对话，实时通话仍沿用原有课程提案入口。
 
 [![Milo 本地图文与网页搜索设计演示](docs/19-local-milo/design-preview.gif)](docs/19-local-milo/design-video.mp4)
 

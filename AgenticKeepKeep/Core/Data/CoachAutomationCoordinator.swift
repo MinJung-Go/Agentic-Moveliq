@@ -44,21 +44,20 @@ final class CoachAutomationCoordinator: ObservableObject {
         let rules = try CoachLifeStore.automationRules(context)
         guard rules.enabled, rules.isValid, rules.validUntil == nil || rules.validUntil! > .now,
               try CoachLifeStore.profile(context).confirmed, LLMSettings.shared.isConfigured else { return }
-        var signals = try CoachLifeContextBuilder.signals(context: context).filter {
-            $0.id.hasPrefix("conflict-") || $0.id.hasPrefix("temporary-") || $0.id.hasPrefix("feedback-") || $0.id.hasPrefix("linked-")
-        }
-        if signals.isEmpty {
-            signals = [.init(id: "routine", title: "检查近期训练与日常", detail: "核对前台每日检查、最新训练、健康摘要与反馈；没有必要变化就保留原计划。", prompt: "")]
-        }
+        let signals = try evaluationSignals(context: context)
         let signature = try triggerSignature(signals: signals, context: context)
         let workspace = try CoachLifeStore.workspace(context)
         guard workspace.lastAutomationSignature != signature,
               workspace.lastAutomationAttempt.map({ Date().timeIntervalSince($0) >= 60 }) ?? true else { return }
         let lifeRevision = try CoachLifeContextBuilder.revision(context: context)
+        let messages = try context.fetch(FetchDescriptor<ChatMessage>())
+        if messages.contains(where: { ($0.hasPendingAdjustment || $0.hasPendingPlan) && $0.pendingLifeRevision == lifeRevision }) {
+            workspace.lastAutomationSignature = signature; try context.save(); return
+        }
         workspace.lastAutomationAttempt = .now; workspace.automationError = ""; try context.save()
         var coachContext = CoachContext()
         coachContext.lifeContext = try CoachLifeContextBuilder.summary(context: context, days: rules.horizonDays!)
-        coachContext.planState = try CoachPlanContext.build(context: context, query: "查询进行中的课程表，调整未来安排")
+        coachContext.planState = try CoachPlanContext.build(context: context, query: "查询进行中的课程表，调整未来安排", limit: 9000)
         let request = "这是用户已开启的前台自动检查。依据最新数据处理这些变化：\n"
             + signals.map { "\($0.title)：\($0.detail)" }.joined(separator: "\n")
             + "\n只为授权计划提出必要的未来调整（propose_plan_adjustment），不创建课程表、不调用独立系统写入。只使用真实ID/版本与具体日期时间。不要堆叠补课。需要澄清就先询问，不臆测身体状态。执行权限由本机判定，越界整批待确认。"
@@ -77,9 +76,15 @@ final class CoachAutomationCoordinator: ObservableObject {
         _ = try await applyIfAuthorized(message: message, context: context, token: token)
     }
     private func triggerSignature(signals: [CoachLifeContextBuilder.Signal], context: ModelContext) throws -> String {
-        let source = try CoachLifeContextBuilder.revision(context: context, includePlans: false)
+        let source = try CoachLifeContextBuilder.revision(context: context, includePlans: false, includeCalendarRevision: false)
             + signals.map { "\($0.id)|\($0.detail)" }.sorted().joined(separator: "\n")
         return SHA256.hash(data: Data(source.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+    private func evaluationSignals(context: ModelContext) throws -> [CoachLifeContextBuilder.Signal] {
+        let signals = try CoachLifeContextBuilder.signals(context: context).filter {
+            $0.id.hasPrefix("conflict-") || $0.id.hasPrefix("temporary-") || $0.id.hasPrefix("feedback-") || $0.id.hasPrefix("linked-")
+        }
+        return signals.isEmpty ? [.init(id: "routine", title: "检查近期训练与日常", detail: "核对前台每日检查、最新训练、健康摘要与反馈；没有必要变化就保留原计划。", prompt: "")] : signals
     }
 
     /// Returns nil when the proposal must remain in the existing confirmation flow.
@@ -132,6 +137,7 @@ final class CoachAutomationCoordinator: ObservableObject {
         record.anchorJSON = try CoachLifeStore.encode(changes.map(\.anchor))
         record.reason = String(draft.summary.prefix(1000))
         guard let receipt = try PlanMutationStore.apply(message: message, context: context, audit: record) else { return nil }
+        record.executionLifeRevision = try CoachLifeContextBuilder.revision(context: context, includeCalendarRevision: false)
         record.receipt = "已按你的授权自动调整。\(receipt)"; message.content += "\n已按你保存的范围自动完成；结果可在今日安排查看。"
         try context.save()
         do {
@@ -143,7 +149,7 @@ final class CoachAutomationCoordinator: ObservableObject {
         } catch {
             record.state = "partial"; record.receipt += "\n关联同步待处理：\(error.localizedDescription)"; try? context.save()
         }
-        if let workspace = try? CoachLifeStore.workspace(context), let signals = try? CoachLifeContextBuilder.signals(context: context) {
+        if let workspace = try? CoachLifeStore.workspace(context), let signals = try? evaluationSignals(context: context) {
             workspace.lastAutomationSignature = (try? triggerSignature(signals: signals, context: context)) ?? ""; try? context.save()
         }
         NotificationCenter.default.post(name: .coachLifeChanged, object: nil)
@@ -152,7 +158,7 @@ final class CoachAutomationCoordinator: ObservableObject {
 
     static func snapshot(_ day: PlanDay, planID: UUID) -> CoachAutomationDay {
         .init(id: day.uuid, planID: planID, title: day.title, start: day.scheduledStart, minutes: day.durationMinutes,
-            status: day.statusRaw, exercises: day.sortedExercises.map { .init(id: $0.uuid, name: $0.name, setsText: $0.setsText, weight: $0.targetWeightKg) })
+            status: day.statusRaw, exercises: day.sortedExercises.map { .init(id: $0.uuid, name: $0.name, setsText: $0.setsText, weight: $0.targetWeightKg) }, note: day.note)
     }
     static func changes(_ draft: PlanAdjustmentDraft, plan: Plan, rules: CoachAutomationRules,
                         history: [CoachAutomationRecord]) throws -> [CoachAutomationChange] {
@@ -164,6 +170,7 @@ final class CoachAutomationCoordinator: ObservableObject {
                 CoachLifeStore.decode([CoachAutomationDay].self, $0.anchorJSON)?.first { $0.id == id }
             }.first ?? current
             var proposed = current
+            proposed.note = change.detail
             if change.action == "skip" {
                 guard change.startTime == nil, change.date == nil, change.durationMinutes == nil else { throw CoachPluginError.invalid }
                 proposed.status = PlanDayStatus.skipped.rawValue
@@ -196,6 +203,8 @@ final class CoachAutomationCoordinator: ObservableObject {
               PlanMutationStore.revision(plan) == record.afterRevision,
               let originals = CoachLifeStore.decode([CoachAutomationDay].self, record.beforeJSON) else { throw CoachPluginError.stale }
         let IDs = Set(originals.map(\.id))
+        let runningIDs = Set(try context.fetch(FetchDescriptor<WorkoutSessionDraft>()).compactMap(\.planDayUUID))
+        guard IDs.isDisjoint(with: runningIDs) else { throw CoachPluginError.unavailable("相关训练已经开始，请先结束或保留本次训练草稿，再重新安排。") }
         var slots: [CoachTimeSlot] = []
         for old in originals {
             guard let day = plan.days.first(where: { $0.uuid == old.id }), day.status != .done,
@@ -212,6 +221,7 @@ final class CoachAutomationCoordinator: ObservableObject {
                 let day = plan.days.first { $0.uuid == old.id }!
                 day.date = Calendar.current.startOfDay(for: old.start!); day.scheduledStart = old.start; day.durationMinutes = old.minutes
                 day.statusRaw = old.status
+                if let note = old.note { day.note = note }
                 for value in old.exercises {
                     guard let exercise = day.exercises.first(where: { $0.uuid == value.id }) else { throw CoachPluginError.stale }
                     exercise.targetWeightKg = value.weight

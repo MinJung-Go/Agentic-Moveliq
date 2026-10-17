@@ -76,6 +76,7 @@ final class CoachAutomationRecord {
     var afterJSON: String = ""
     var anchorJSON: String = ""
     var afterRevision: String = ""
+    var executionLifeRevision: String = ""
     var reason: String = ""
     var state: String = "localApplied"
     var receipt: String = ""

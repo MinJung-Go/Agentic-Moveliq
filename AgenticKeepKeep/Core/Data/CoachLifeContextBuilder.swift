@@ -4,13 +4,13 @@ import SwiftData
 
 @MainActor
 enum CoachLifeContextBuilder {
-    static func revision(context: ModelContext, now: Date = .now, includePlans: Bool = true) throws -> String {
+    static func revision(context: ModelContext, now: Date = .now, includePlans: Bool = true, includeCalendarRevision: Bool = true) throws -> String {
         let workspace = try CoachLifeStore.workspace(context)
         let checks = try context.fetch(FetchDescriptor<CoachCheckIn>()).filter { $0.kind == "feedback" || ($0.kind == "temporary" && $0.expiresAt > now) }
         let plans = try context.fetch(FetchDescriptor<Plan>()).filter(\.isActive)
         let fields = [workspace.profileJSON, workspace.pluginsJSON, workspace.automationJSON, CoachLifeTime.iso(Calendar.current.startOfDay(for: now)), HealthKitService.shared.lastSyncDate.map(CoachLifeTime.iso) ?? ""]
             + checks.sorted { $0.uuid.uuidString < $1.uuid.uuidString }.map { "\($0.uuid)|\($0.minutes)|\($0.availableMinutes ?? -1)|\($0.difficulty)|\($0.timing)|\($0.expiresAt.timeIntervalSince1970)|\($0.kind == "temporary" ? $0.note : "")" }
-        let state = fields + [CalendarPluginService.shared.revision.uuidString] + (includePlans ? plans.map { PlanMutationStore.revision($0) }.sorted() : [])
+        let state = fields + (includeCalendarRevision ? [CalendarPluginService.shared.revision.uuidString] : []) + (includePlans ? plans.map { PlanMutationStore.revision($0) }.sorted() : [])
         var digest = try DataAggregator.digest(days: 14, endingAt: now, context: context)
         digest.trends.sort { $0.name < $1.name }
         let data = state.map { "\($0.utf8.count):\($0)" }.joined() + (try CoachLifeStore.encode(digest))

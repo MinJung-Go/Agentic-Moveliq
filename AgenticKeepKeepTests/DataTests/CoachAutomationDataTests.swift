@@ -29,6 +29,8 @@ final class CoachAutomationDataTests: XCTestCase {
         var config = CoachPluginConfiguration(); config.syncTrainingCalendar = true; config.writeCalendarID = "selected"
         try CoachLifeStore.save(plugins: config, in: context)
         let record = CoachAutomationRecord(ruleID: rules.revision, planID: plan.uuid, messageID: UUID())
+        record.afterJSON = try CoachLifeStore.encode([CoachAutomationCoordinator.snapshot(day, planID: plan.uuid)])
+        record.executionLifeRevision = try CoachLifeContextBuilder.revision(context: context, includeCalendarRevision: false)
         record.afterRevision = PlanMutationStore.revision(plan); context.insert(record); try context.save()
         try TrainingScheduleSync.enqueue(planID: plan.uuid, context: context, dayIDs: [day.uuid], automation: record)
         return (record, try XCTUnwrap(context.fetch(FetchDescriptor<CoachTrainingLink>()).first))
@@ -82,6 +84,31 @@ final class CoachAutomationDataTests: XCTestCase {
         day.title = "用户后改的训练"; try context.save()
         XCTAssertThrowsError(try TrainingScheduleSync.validateAutomationAuthority(link, context: context))
         XCTAssertEqual(day.title, "用户后改的训练")
+    }
+    func testLifeConstraintChangeInvalidatesQueuedAutomaticWrites() throws {
+        let (context, plan, day, rules) = try fixture()
+        let (_, link) = try queued(context, plan: plan, day: day, rules: rules)
+        XCTAssertNoThrow(try TrainingScheduleSync.validateAutomationAuthority(link, context: context))
+        var profile = try CoachLifeStore.profile(context); profile.constraints = "今天先问我再调整"
+        try CoachLifeStore.save(profile: profile, in: context)
+        XCTAssertTrue(try CoachLifeStore.automationRules(context).enabled)
+        XCTAssertThrowsError(try TrainingScheduleSync.validateAutomationAuthority(link, context: context))
+    }
+    func testSingleConfirmationResumesRevokedBatchWithoutResettingSuccessfulReceipts() throws {
+        let (context, plan, day, rules) = try fixture()
+        var profile = CoachLifeProfile(); profile.confirmed = true
+        profile.windows = (1...7).map { .init(weekday: $0, startMinute: 18 * 60, endMinute: 22 * 60) }
+        try CoachLifeStore.save(profile: profile, in: context)
+        let (record, link) = try queued(context, plan: plan, day: day, rules: rules)
+        link.calendarReceipt = "日历已同步"; try context.save()
+        var disabled = rules; disabled.enabled = false; try CoachLifeStore.save(automationRules: disabled, in: context)
+        XCTAssertThrowsError(try TrainingScheduleSync.validateAutomationAuthority(link, context: context))
+        try TrainingScheduleSync.prepareConfirmedRemaining(record, context: context)
+        XCTAssertNoThrow(try TrainingScheduleSync.validateAutomationAuthority(link, context: context))
+        XCTAssertEqual(link.calendarReceipt, "日历已同步"); XCTAssertTrue(link.pending)
+        XCTAssertFalse(try CoachLifeStore.automationRules(context).enabled)
+        day.title = "另一次修改"; try context.save()
+        XCTAssertThrowsError(try TrainingScheduleSync.prepareConfirmedRemaining(record, context: context))
     }
     func testAutomaticQueueIsLimitedToAffectedDaysAndHistoryExports() throws {
         let (context, plan, day, rules) = try fixture()

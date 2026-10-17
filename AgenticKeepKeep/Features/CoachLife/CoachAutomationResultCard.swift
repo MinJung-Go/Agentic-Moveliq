@@ -30,6 +30,10 @@ struct CoachAutomationResultCard: View {
                             HStack(spacing: 12) { arrangement(old); Image(systemName: "arrow.right"); arrangement(day) }
                             VStack(alignment: .leading, spacing: 8) { arrangement(old); Image(systemName: "arrow.down"); arrangement(day) }
                         }
+                        ForEach(day.exercises.filter { exercise in old.exercises.first { $0.id == exercise.id }?.weight != exercise.weight }, id: \.id) { exercise in
+                            Text("\(exercise.name)：\(old.exercises.first { $0.id == exercise.id }?.weight.map { String($0) } ?? "未提供") → \(exercise.weight.map { String($0) } ?? "未提供") kg")
+                                .font(.footnote).foregroundStyle(Theme.Journal.secondary)
+                        }
                     }
                 }
             }

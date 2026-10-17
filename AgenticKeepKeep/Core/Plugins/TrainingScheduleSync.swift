@@ -120,9 +120,9 @@ enum TrainingScheduleSync {
             return links.isEmpty ? "没有待同步项目。" : "同步完成\(successes)项，\(failures)项待处理。课程表已保留；失败项可单独重试。"
         } catch { return "同步未完成：\(error.localizedDescription)" }
     }
-    private static func validateCurrent(_ link: CoachTrainingLink, desired: Desired, context: ModelContext) throws {
+    private static func validateCurrent(_ link: CoachTrainingLink, desired: Desired, context: ModelContext, checkAutomaticAuthority: Bool = true) throws {
         let plan = try context.fetch(FetchDescriptor<Plan>()).first { $0.uuid == link.planID }
-        try validateAutomationAuthority(link, context: context)
+        if checkAutomaticAuthority { try validateAutomationAuthority(link, context: context) }
         let day = plan?.days.first { $0.uuid == link.dayID }
         if desired.remove {
             guard desired.start > .now, day == nil || day?.status == .skipped || plan?.isActive != true else { throw CoachPluginError.stale }
@@ -152,6 +152,7 @@ enum TrainingScheduleSync {
                   rules.validUntil == nil || rules.validUntil! > .now,
                   rules.planIDs.contains(link.planID), record?.restoredAt == nil,
                   let plan, record?.afterRevision == PlanMutationStore.revision(plan),
+                  record?.executionLifeRevision == (try CoachLifeContextBuilder.revision(context: context, includeCalendarRevision: false)),
                   (!desired.calendar && link.eventID.isEmpty && link.eventLookupDates.isEmpty || rules.syncCalendar),
                   (!desired.alarm && link.alarmID == nil && link.retiredAlarmIDs.isEmpty || rules.syncAlarms) else {
                 throw CoachPluginError.unavailable("自动同步授权已变化或失效。课程表和已完成步骤保留，请查看本次结果后单次确认剩余同步。")
@@ -162,6 +163,10 @@ enum TrainingScheduleSync {
     /// Explicit confirmation of a displayed result grants only this batch's remaining steps.
     static func confirmRemaining(_ record: CoachAutomationRecord, context: ModelContext) throws {
         try CoachLifeStore.checkAccount(context: context, token: ServiceCredentials.session?.token)
+        try prepareConfirmedRemaining(record, context: context)
+    }
+    /// Local preparation after concrete user confirmation; performs no system I/O.
+    static func prepareConfirmedRemaining(_ record: CoachAutomationRecord, context: ModelContext) throws {
         guard let plan = try context.fetch(FetchDescriptor<Plan>()).first(where: { $0.uuid == record.planID }),
               plan.isActive, PlanMutationStore.revision(plan) == record.afterRevision,
               record.restoredAt == nil,
@@ -176,7 +181,7 @@ enum TrainingScheduleSync {
                 guard var desired = CoachLifeStore.decode(Desired.self, link.desiredJSON),
                       desired.automationRecordID == nil || desired.automationRecordID == record.uuid else { throw CoachPluginError.stale }
                 desired.automationRuleID = nil; desired.automationRecordID = nil
-                try validateCurrent(link, desired: desired, context: context)
+                try validateCurrent(link, desired: desired, context: context, checkAutomaticAuthority: false)
                 link.desiredJSON = try CoachLifeStore.encode(desired)
             }
             try context.save()

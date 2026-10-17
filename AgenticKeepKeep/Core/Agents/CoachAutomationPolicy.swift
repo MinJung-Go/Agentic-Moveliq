@@ -65,6 +65,7 @@ struct CoachAutomationDay: Codable, Equatable {
     var minutes: Int?
     var status: String = "pending"
     var exercises: [Exercise] = []
+    var note: String? = nil
 }
 
 struct CoachAutomationChange: Equatable {
@@ -164,7 +165,8 @@ enum CoachAutomationPolicy {
                           (baseline - weight) * 100 <= baseline * Double(rules.maximumWeightReductionPercent!) + 0.000001 else { return .needsConfirmation(.magnitude) }
                 }
             }
-            guard current != proposed else { return .needsConfirmation(.unsupported) }
+            var previousTraining = current; previousTraining.note = proposed.note
+            guard previousTraining != proposed else { return .needsConfirmation(.unsupported) }
         }
         return .automatic
     }

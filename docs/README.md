@@ -2,7 +2,7 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
-当前第 34 轮：适配日常的动态健身教练、系统插件与记录可靠性。围绕“了解日常 → 规划 → 执行 → 动态调整 → 复盘”接入生活偏好、日历、浏览器、地图、闹钟、Apple 音乐及 Siri 入口。[需求](34-agent-system-plugins/requirements.md) · [清单](34-agent-system-plugins/checklist.md) · [已确认设计稿](34-agent-system-plugins/design.html)。本轮源码已实施、未提交，原生构建和真机验收待完成；最近已记录的安装版本为第 33 轮 0.5.17（38）。
+当前第 34 轮：适配日常的动态健身教练、系统插件与记录可靠性。围绕“了解日常 → 规划 → 执行 → 动态调整 → 复盘”接入生活偏好、日历、浏览器、地图、闹钟、Apple 音乐及 Siri 入口。[需求](34-agent-system-plugins/requirements.md) · [清单](34-agent-system-plugins/checklist.md) · [已确认设计稿](34-agent-system-plugins/design.html)。源码已提交功能分支，0.5.18（39）原生 CI/IPA 正在推进；最近已记录的安装版本为第 33 轮 0.5.17（38），真机验收单独记录。
 
 | 轮次 | 主题 | 文档 |
 |------|------|------|
@@ -19,7 +19,7 @@
 | 20-mlx-validation | MLX Swift 独立验证 App | [需求](20-mlx-validation/requirements.md) · [清单](20-mlx-validation/checklist.md) · [设计稿](20-mlx-validation/design.html) · [验证说明](20-mlx-validation/validation.md) |
 | 21-mlx-production | 正式 App 迁移 MLX，含图文 | [需求](21-mlx-production/requirements.md) · [清单](21-mlx-production/checklist.md) |
 
-第 34 轮追加自主程度：用户选择“预设范围内自动调整，其余确认”。[授权与回执追加稿](34-agent-system-plugins/design.autonomy.html) 已准备；非 UI 规则已实施，设置和自动执行接入待具体稿确认。
+第 34 轮追加自主程度：用户选择“预设范围内自动调整，其余确认”。[授权与回执第二版](34-agent-system-plugins/design.autonomy.html) 已确认并接入设置、自动执行、授权撤销及回执/恢复；最终原生验证结果以本轮清单为准。
 
 ## 候选需求（尚未立轮次）
 

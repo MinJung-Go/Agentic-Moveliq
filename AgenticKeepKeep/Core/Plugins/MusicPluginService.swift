@@ -74,8 +74,8 @@ final class MusicPluginService: ObservableObject {
         let player = SystemMusicPlayer.shared
         switch item {
         case .song(let song): player.queue = .init(for: [song])
-        case .album(let album): player.queue = .init(for: album)
-        case .playlist(let playlist): player.queue = .init(for: playlist)
+        case .album(let album): player.queue = .init(for: [album])
+        case .playlist(let playlist): player.queue = .init(for: [playlist])
         }
         try await player.play()
         try revalidate(); revision = UUID()

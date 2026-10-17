@@ -13,6 +13,7 @@ struct CoachChatView: View {
     @StateObject private var dictation = VoiceInput()
     @StateObject private var realtime = RealtimeCall()
     @State private var showsRealtime = false
+    @State private var voiceAutomationSuspended = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -116,7 +117,7 @@ struct CoachChatView: View {
                 return .handled
             })
             .sheet(isPresented: $browser.isPresented) { LocalBrowserView(browser: browser) }
-            .onDisappear { dictation.finish(); realtime.end(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
+            .onDisappear { dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { dictation.finish(); realtime.pause() }
             }
@@ -164,9 +165,9 @@ struct CoachChatView: View {
         .overlay {
             if showsRealtime {
                 RealtimeCallView(call: realtime, name: displayName, onEnd: {
-                    realtime.end(); showsRealtime = false
+                    finishRealtime()
                 }, onReview: { request in
-                    realtime.end(); showsRealtime = false
+                    finishRealtime()
                     guard !isSending else { return }
                     isSending = true
                     streamTask = Task { await send(suppliedText: request) }
@@ -177,6 +178,7 @@ struct CoachChatView: View {
     }
 
     private func openRealtime() {
+        if !voiceAutomationSuspended { CoachAutomationCoordinator.shared.beginConversation(); voiceAutomationSuspended = true }
         dictation.finish()
         isInputFocused = false
         realtime.open(history: messages.suffix(12).map { (role: $0.role.rawValue, text: $0.content) })
@@ -186,6 +188,12 @@ struct CoachChatView: View {
             catch { appState.showToast("通话文字保存失败，请检查存储空间") }
         }
         showsRealtime = true
+    }
+    private func finishRealtime() {
+        realtime.end(); showsRealtime = false
+        if voiceAutomationSuspended {
+            voiceAutomationSuspended = false; CoachAutomationCoordinator.shared.endConversation(context: context)
+        }
     }
 
     private var pendingPlan: ChatMessage? {
@@ -657,7 +665,7 @@ struct CoachChatView: View {
 
     private func clearHistory() {
         dictation.finish()
-        realtime.end(); showsRealtime = false
+        finishRealtime()
         stopStreaming()
         toolActivities = []
         isSending = false
