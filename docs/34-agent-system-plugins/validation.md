@@ -1,6 +1,26 @@
 # 第 34 轮验证记录
 
-## 2026-10-18 当前进展
+## 2026-10-18 发布验证
+
+- 版本：**0.5.18（39）**；最低 iOS 17，AlarmKit 仅 iOS 26+。
+- [PR #8](https://github.com/MinJung-Go/Agentic-Moveliq/pull/8) 已合并至 `main`；标签 `v0.5.18` 指向 `03b6a5160f84076daeb48ce1bb0f18fdd7dc0e9e`，源代码树与评审通过的功能分支一致。
+- [main CI](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058038469) 与 [标签 CI](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058061133) 均成功；原生编译、侧载权限声明检查和 **565/565 项 XCTest，0 失败**，包含本轮新增61项。已下载实际构建日志核对数量和 `TEST SUCCEEDED`；标签的 IPA 归档、打包与上传均成功。
+- 标签 CI 中 28 项音频、26 项 Foundation 日常/授权策略及默认/全部插件两个实际源码预算场景通过。没有放宽上下文输入上限、输出预留或查询预留。
+- [正式标签 IPA 下载](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058061133/artifacts/12110533955)：artifact `KeepKeep-unsigned-ipa`，解压后的 `KeepKeep-unsigned.ipa` 为 **9,519,630 字节**。本机保留为 `build/releases/Moveliq-0.5.18-39.ipa`；该路径为忽略目录，不提交二进制。
+- IPA SHA-256：`11c8f4ba94757add1a46d61e08d860884c1f9acec038b3111beab600ce2ffb9c`。
+- 下载后 ZIP 完整性、App/Widget 均为0.5.18（39）、bundle ID `com.minjung.keepkeep`、最低 iOS 17、服务地址 `https://moveliq.work/api`、日历/闹钟/音乐/定位/健康/麦克风/语音权限用途描述均核验通过。三项 App Intents 元数据完整，AlarmKit 为 weak link；包含3,814,924字节 Metal 库和许可证，不含模型权重。
+- 执行 `python scripts/local-milo/verify_ipa.py <IPA>` 及本机临时核验脚本检查上述包内容。静态 weak link 和权限描述不能代替旧系统运行及真机授权；本包仍需侧载工具重新签名。
+- 发布回填仅更新四份 Markdown；119 项本地文档链接与 `git diff --check` 通过。App、测试、工程及 CI 配置与上述已通过标签一致。
+
+以上是当前状态，后面的失败、待确认或未打包描述为历史阶段记录。Windows 本机不执行 Xcode；原生结果来自对应提交的 macOS CI。
+
+安装后在“设置 → 插件”启用所需插件并申请系统权限；在“我的训练与日常 → 自动调整范围”保存完整的个人规则后才允许自动执行。未配置完整时继续人工确认，不从设计稿示例推断用户额度。
+
+尚待验证：SwiftUI 真机布局、真实模型端到端规划/动态调整、EventKit 同步及重复事件、WebKit 搜索提取、定位/地图跳转、AlarmKit 授权与关闭 App 后响铃、MusicKit 播放和 Siri 发现/冷启动。Apple 音乐曲库需要最终 App ID 的 MusicKit App Service 与实际侧载配置；本轮没有修改开发者后台、部署音乐服务或执行真机测试。
+
+系统插件工具已接入文字与语音转文字对话；Realtime 通话保持原有课程提案入口。主动检查在 App 实际可观察的前台事件触发，App 挂起后不持续运行云端 Agent；已安排的日程/闹钟由系统处理。
+
+## 2026-10-18 实施与 CI 历史
 
 最新功能源码 `c37bec98dc42a0e82b5e903f6710361629db949c` 的 [CI](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39056960170) 已通过 App 编译、侧载权限声明检查及 **565/565 项 iOS XCTest（0失败）**；包含本轮新增61项。28项音频、26项策略及默认/全部插件两个实际预算场景通过。原先失败的默认预算回归保留并已通过，未调整输入上限、输出预留或查询预留。IPA 正在归档；下面失败和待运行描述均为历史阶段记录。
 
