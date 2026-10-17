@@ -39,14 +39,21 @@ func check(_ label: String, context: CoachContext, tools: [LLMTool], policy: Coa
     messages[0].content += "\\n" + BudgetTools.instructions
     let request = LLMRequest(messages: messages, tools: [CoachAgent.createPlanTool, CoachAgent.adjustPlanTool] + tools)
     let used = policy.tokens(request), available = try policy.inputLimit() - policy.queryResultReserve
-    print("\\(label): mandatory=\\(used), available=\\(available), query reserve=\\(policy.queryResultReserve)")
+    let line = "\\(label): mandatory=\\(used), available=\\(available), query reserve=\\(policy.queryResultReserve), system=\\(messages[0].content.utf8.count)\\n"
+    FileHandle.standardError.write(Data(line.utf8))
+    for tool in request.tools {
+        let bytes = try JSONEncoder().encode(tool.parameters).count + tool.description.utf8.count + tool.name.utf8.count + 64
+        FileHandle.standardError.write(Data("\\(tool.name)=\\(bytes)\\n".utf8))
+    }
     guard used <= available else { throw CoachContextError.tooLarge }
     try policy.validate(request)
 }
-try check("default", context: context, tools: basic, policy: CoachContextPolicy())
+var failed = false
+do { try check("default", context: context, tools: basic, policy: CoachContextPolicy()) } catch { failed = true }
 context.lifeContext = String(repeating: "用户已确认的训练时段与限制。", count: 50)
 let plugins = CoachPluginTools.definitions(enabled: Set(CoachPlugin.allCases), calendarReady: true, alarmReady: true, musicReady: true)
-try check("all plugins", context: context, tools: basic + plugins, policy: CoachContextPolicy(window: 32768, inputCap: 32768))
+do { try check("all plugins", context: context, tools: basic + plugins, policy: CoachContextPolicy(window: 32768, inputCap: 32768)) } catch { failed = true }
+if failed { exit(1) }
 ''', encoding="utf-8")
         executable = target / "budget-probe"
         subprocess.run(["swiftc", *map(str, target.glob("*.swift")), "-o", str(executable)], check=True)
