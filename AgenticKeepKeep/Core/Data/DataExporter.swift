@@ -122,6 +122,12 @@ enum DataExporter {
         var checkIns: [CheckInDTO]
         var operations: [OperationDTO]
         var links: [LinkDTO]
+        var automationHistory: [AutomationDTO] = []
+        struct AutomationDTO: Encodable {
+            var id: UUID; var date: Date; var ruleID: UUID; var planID: UUID
+            var beforeJSON: String; var afterJSON: String; var anchorJSON: String
+            var reason: String; var state: String; var receipt: String
+        }
         struct CheckInDTO: Encodable {
             var id: UUID; var date: Date; var expiresAt: Date; var kind: String
             var sessionID: UUID?; var dayID: UUID?; var minutes: Int; var availableMinutes: Int?; var difficulty: String; var timing: String; var note: String
@@ -258,6 +264,9 @@ enum DataExporter {
             checkIns: try context.fetch(FetchDescriptor<CoachCheckIn>()).map { .init(id: $0.uuid, date: $0.date, expiresAt: $0.expiresAt, kind: $0.kind, sessionID: $0.sessionID, dayID: $0.dayID, minutes: $0.minutes, availableMinutes: $0.availableMinutes, difficulty: $0.difficulty, timing: $0.timing, note: $0.note) },
             operations: try context.fetch(FetchDescriptor<CoachActionRecord>()).map { .init(id: $0.uuid, operationID: $0.operationID, date: $0.date, kind: $0.kind, payloadJSON: $0.payloadJSON, state: $0.state, receipt: $0.receipt) },
             links: try context.fetch(FetchDescriptor<CoachTrainingLink>()).map { .init(planID: $0.planID, dayID: $0.dayID, eventID: $0.eventID, alarmID: $0.alarmID, retiredAlarmIDs: $0.retiredAlarmIDs, desiredJSON: $0.desiredJSON, calendarReceipt: $0.calendarReceipt, alarmReceipt: $0.alarmReceipt, error: $0.error, pending: $0.pending) })
+        payload.coachState?.automationHistory = try context.fetch(FetchDescriptor<CoachAutomationRecord>()).map {
+            .init(id: $0.uuid, date: $0.date, ruleID: $0.ruleID, planID: $0.planID, beforeJSON: $0.beforeJSON, afterJSON: $0.afterJSON, anchorJSON: $0.anchorJSON, reason: $0.reason, state: $0.state, receipt: $0.receipt)
+        }
         return payload
     }
 

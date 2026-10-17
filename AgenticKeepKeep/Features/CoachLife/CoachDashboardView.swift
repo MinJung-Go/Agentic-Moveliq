@@ -11,6 +11,10 @@ struct CoachDashboardView: View {
     @Query(sort: [SortDescriptor(\CoachCheckIn.date, order: .reverse)]) private var checks: [CoachCheckIn]
     @Query(sort: [SortDescriptor(\CoachActionRecord.date, order: .reverse)]) private var actions: [CoachActionRecord]
     @Query private var links: [CoachTrainingLink]
+    @Query(sort: [SortDescriptor(\CoachAutomationRecord.date, order: .reverse)]) private var automatic: [CoachAutomationRecord]
+    @Query private var workspaces: [CoachWorkspace]
+    @Query private var messages: [ChatMessage]
+    @ObservedObject private var automation = CoachAutomationCoordinator.shared
     @State private var signals: [CoachLifeContextBuilder.Signal] = []
     @State private var checkedAt: Date?
     @State private var error: String?
@@ -31,6 +35,12 @@ struct CoachDashboardView: View {
                         .foregroundStyle(Theme.Journal.secondary)
                 }
                 if !signals.isEmpty { signalsSection }
+                if automation.checking { ProgressView("Milo 正在检查最新安排…").font(.footnote) }
+                if let issue = workspaces.first?.automationError, !issue.isEmpty { Text(issue).font(.footnote).foregroundStyle(Theme.Journal.secondary) }
+                if messages.contains(where: \.hasPendingAdjustment) {
+                    Button("查看 Milo 的待确认调整") { chat = ChatEntry(text: "") }.buttonStyle(PrimaryButtonStyle())
+                }
+                ForEach(automatic.prefix(8), id: \.uuid) { CoachAutomationResultCard(record: $0) }
                 todaySection
                 NavigationLink { CoachTemporaryStateView() } label: { Label("今天有变化", systemImage: "text.bubble") }
                     .buttonStyle(SecondaryButtonStyle())
@@ -64,6 +74,7 @@ struct CoachDashboardView: View {
                 }
                 if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
                 NavigationLink("修改目标与生活偏好") { CoachLifeProfileView() }
+                NavigationLink("自动调整范围") { CoachAutomationSettingsView() }
                 NavigationLink("管理插件") { CoachPluginsView() }
             }.padding(24)
         }
@@ -85,7 +96,7 @@ struct CoachDashboardView: View {
                     Text(signal.detail).font(.footnote).foregroundStyle(Theme.Journal.secondary)
                     Button("和 Milo 重新安排") { chat = ChatEntry(text: signal.prompt) }.buttonStyle(PrimaryButtonStyle())
                     Button("保留原计划") {
-                        do { try CoachLifeStore.dismiss(signal, context: context); evaluate() } catch { self.error = error.localizedDescription }
+                        do { try CoachLifeContextBuilder.dismiss(signal, context: context); evaluate() } catch { self.error = error.localizedDescription }
                     }.buttonStyle(SecondaryButtonStyle())
                 }.padding(16).background(Theme.Journal.panel, in: RoundedRectangle(cornerRadius: 16))
             }

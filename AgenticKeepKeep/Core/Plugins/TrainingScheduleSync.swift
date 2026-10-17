@@ -13,10 +13,12 @@ enum TrainingScheduleSync {
         var alarm: Bool
         var calendarID: String
         var reminder: Int
+        var automationRuleID: UUID?
+        var automationRecordID: UUID?
     }
     private static var running = false
     /// Called only after accepting a concrete plan/change, or after explicit retry.
-    static func enqueue(planID: UUID, context: ModelContext) throws {
+    static func enqueue(planID: UUID, context: ModelContext, dayIDs: Set<UUID>? = nil, automation: CoachAutomationRecord? = nil) throws {
         try context.save()
         do {
             let config = try CoachLifeStore.plugins(context)
@@ -25,6 +27,7 @@ enum TrainingScheduleSync {
             var links = try context.fetch(FetchDescriptor<CoachTrainingLink>()).filter { $0.planID == planID }
             if plan?.isActive == true && (config.syncTrainingCalendar || config.syncTrainingAlarms || !links.isEmpty) {
                 for day in plan?.days ?? [] where day.status == .pending {
+                    if let dayIDs, !dayIDs.contains(day.uuid) { continue }
                     guard let start = day.scheduledStart, let minutes = day.durationMinutes, start > .now else { continue }
                     if !links.contains(where: { $0.dayID == day.uuid }) {
                         guard config.syncTrainingCalendar || config.syncTrainingAlarms else { continue }
@@ -33,7 +36,8 @@ enum TrainingScheduleSync {
                     let link = links.first { $0.dayID == day.uuid }!
                     let desired = Desired(title: day.title, start: start, minutes: minutes, remove: false,
                         calendar: config.syncTrainingCalendar, alarm: config.syncTrainingAlarms,
-                        calendarID: config.writeCalendarID, reminder: config.reminderMinutes)
+                        calendarID: config.writeCalendarID, reminder: config.reminderMinutes,
+                        automationRuleID: automation?.ruleID, automationRecordID: automation?.uuid)
                     let json = try CoachLifeStore.encode(desired)
                     if desired.calendar {
                         if !link.eventLookupDates.contains(start) { link.eventLookupDates.append(start) }
@@ -51,11 +55,13 @@ enum TrainingScheduleSync {
                 }
             }
             for link in links {
+                if let dayIDs, !dayIDs.contains(link.dayID) { continue }
                 let day = plan?.days.first { $0.uuid == link.dayID }
                 guard day == nil || day?.status == .skipped || plan?.isActive != true else { continue }
                 guard var desired = CoachLifeStore.decode(Desired.self, link.desiredJSON), !desired.remove else { continue }
                 guard desired.start > .now, day?.status != .done else { continue }
-                desired.remove = true; link.desiredJSON = try CoachLifeStore.encode(desired)
+                desired.remove = true; desired.automationRuleID = automation?.ruleID; desired.automationRecordID = automation?.uuid
+                link.desiredJSON = try CoachLifeStore.encode(desired)
                 link.pending = true; link.calendarReceipt = ""; link.alarmReceipt = ""
             }
             try context.save()
@@ -95,7 +101,9 @@ enum TrainingScheduleSync {
                             guard at > .now else { throw CoachPluginError.unavailable("训练提醒时间已过，未补建过期闹钟，请重新安排。") }
                             let request = AlarmChangeRequest(action: "create", title: desired.title, date: CoachLifeTime.iso(at))
                             try await AlarmPluginService.schedule(request, id: id)
+                            // The stable alarm ID makes a retry safe even if authority changes while awaiting the API.
                             try CoachLifeStore.require(.alarms, context: context, token: token)
+                            try validateCurrent(link, desired: desired, context: context)
                         }
                         for old in link.retiredAlarmIDs { try AlarmPluginService.cancel(old) }
                         link.retiredAlarmIDs = []
@@ -114,6 +122,7 @@ enum TrainingScheduleSync {
     }
     private static func validateCurrent(_ link: CoachTrainingLink, desired: Desired, context: ModelContext) throws {
         let plan = try context.fetch(FetchDescriptor<Plan>()).first { $0.uuid == link.planID }
+        try validateAutomationAuthority(link, context: context)
         let day = plan?.days.first { $0.uuid == link.dayID }
         if desired.remove {
             guard desired.start > .now, day == nil || day?.status == .skipped || plan?.isActive != true else { throw CoachPluginError.stale }
@@ -132,6 +141,46 @@ enum TrainingScheduleSync {
             }
         }
         if desired.alarm, !desired.remove, !config.syncTrainingAlarms { throw CoachPluginError.stale }
+    }
+    static func validateAutomationAuthority(_ link: CoachTrainingLink, context: ModelContext) throws {
+        guard let desired = CoachLifeStore.decode(Desired.self, link.desiredJSON) else { throw CoachPluginError.invalid }
+        let plan = try context.fetch(FetchDescriptor<Plan>()).first { $0.uuid == link.planID }
+        if let ruleID = desired.automationRuleID {
+            let rules = try CoachLifeStore.automationRules(context)
+            let record = try context.fetch(FetchDescriptor<CoachAutomationRecord>()).first { $0.uuid == desired.automationRecordID }
+            guard rules.enabled, rules.isValid, rules.revision == ruleID,
+                  rules.validUntil == nil || rules.validUntil! > .now,
+                  rules.planIDs.contains(link.planID), record?.restoredAt == nil,
+                  let plan, record?.afterRevision == PlanMutationStore.revision(plan),
+                  (!desired.calendar && link.eventID.isEmpty && link.eventLookupDates.isEmpty || rules.syncCalendar),
+                  (!desired.alarm && link.alarmID == nil && link.retiredAlarmIDs.isEmpty || rules.syncAlarms) else {
+                throw CoachPluginError.unavailable("自动同步授权已变化或失效。课程表和已完成步骤保留，请查看本次结果后单次确认剩余同步。")
+            }
+        }
+    }
+
+    /// Explicit confirmation of a displayed result grants only this batch's remaining steps.
+    static func confirmRemaining(_ record: CoachAutomationRecord, context: ModelContext) throws {
+        try CoachLifeStore.checkAccount(context: context, token: ServiceCredentials.session?.token)
+        guard let plan = try context.fetch(FetchDescriptor<Plan>()).first(where: { $0.uuid == record.planID }),
+              plan.isActive, PlanMutationStore.revision(plan) == record.afterRevision,
+              record.restoredAt == nil,
+              let days = CoachLifeStore.decode([CoachAutomationDay].self, record.afterJSON) else { throw CoachPluginError.stale }
+        let IDs = Set(days.map(\.id))
+        let links = try context.fetch(FetchDescriptor<CoachTrainingLink>()).filter { IDs.contains($0.dayID) && $0.pending }
+        // Recover a local commit whose queue could not be saved; no local mutation is repeated.
+        if links.isEmpty { try enqueue(planID: plan.uuid, context: context, dayIDs: IDs); return }
+        try context.save()
+        do {
+            for link in links {
+                guard var desired = CoachLifeStore.decode(Desired.self, link.desiredJSON),
+                      desired.automationRecordID == nil || desired.automationRecordID == record.uuid else { throw CoachPluginError.stale }
+                desired.automationRuleID = nil; desired.automationRecordID = nil
+                try validateCurrent(link, desired: desired, context: context)
+                link.desiredJSON = try CoachLifeStore.encode(desired)
+            }
+            try context.save()
+        } catch { context.rollback(); throw error }
     }
     private static func syncCalendar(_ link: CoachTrainingLink, desired: Desired) throws {
         let service = CalendarPluginService.shared, store = service.store

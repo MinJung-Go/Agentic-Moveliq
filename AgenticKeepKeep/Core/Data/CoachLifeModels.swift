@@ -7,6 +7,9 @@ final class CoachWorkspace {
     var profileJSON: String = ""
     var pluginsJSON: String = ""
     var automationJSON: String = ""
+    var lastAutomationSignature: String = ""
+    var lastAutomationAttempt: Date?
+    var automationError: String = ""
     var updatedAt: Date = Date()
     init() {}
 }
@@ -60,4 +63,24 @@ final class CoachTrainingLink {
     var error: String = ""
     var pending = true
     init(planID: UUID, dayID: UUID) { self.planID = planID; self.dayID = dayID }
+}
+
+@Model
+final class CoachAutomationRecord {
+    var uuid: UUID = UUID()
+    var date: Date = Date()
+    var ruleID: UUID = UUID()
+    var planID: UUID = UUID()
+    var messageID: UUID = UUID()
+    var beforeJSON: String = ""
+    var afterJSON: String = ""
+    var anchorJSON: String = ""
+    var afterRevision: String = ""
+    var reason: String = ""
+    var state: String = "localApplied"
+    var receipt: String = ""
+    var restoredAt: Date?
+    init(ruleID: UUID, planID: UUID, messageID: UUID) {
+        self.ruleID = ruleID; self.planID = planID; self.messageID = messageID
+    }
 }

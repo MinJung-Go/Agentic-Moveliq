@@ -79,6 +79,7 @@ final class AuthStore: ObservableObject {
     }
     func lockSession(message: String?) {
         generation = UUID(); busy = false
+        CoachAutomationCoordinator.shared.invalidate()
         ServiceCredentials.clear(); ServiceTransport.shared.cancelAll()
         CalendarPluginService.shared.reset()
         MapsPluginService.shared.reset()

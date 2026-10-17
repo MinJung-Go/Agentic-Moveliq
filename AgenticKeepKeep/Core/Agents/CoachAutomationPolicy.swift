@@ -19,6 +19,16 @@ struct CoachAutomationRules: Codable, Equatable {
     var syncCalendar = false
     var syncAlarms = false
 
+    var summary: String {
+        guard enabled, isValid else { return "自动调整未启用或规则未完整保存，所有调整先确认。" }
+        var permissions: [String] = []
+        if actions.contains(.move) { permissions.append("时间相对原安排最多移动\(maximumStartShiftMinutes!)分钟/跨\(maximumDateShiftDays!)天") }
+        if actions.contains(.shorten) { permissions.append("最多缩短\(maximumShorteningPercent!)%，保留至少\(minimumSessionMinutes!)分钟") }
+        if actions.contains(.reduceWeight) { permissions.append("已有动作重量最多降低\(maximumWeightReductionPercent!)%") }
+        if actions.contains(.skip) { permissions.append("可跳过本次未来训练") }
+        return "用户已保存的自动调整范围：仅计划ID \(planIDs.map(\.uuidString).sorted().joined(separator: ","))；\(permissions.joined(separator: "；"))。未来\(horizonDays!)天，每天最多\(dailyChangeLimit!)项，开练前\(minimumLeadMinutes!)分钟停止；日历自动同步=\(syncCalendar)，闹钟自动同步=\(syncAlarms)。\(validUntil.map { "有效至\(CoachLifeTime.iso($0))。" } ?? "")模型只能提出方案，是否自动执行由本机重新校验；不可修改授权。"
+    }
+
     var isValid: Bool {
         guard enabled else { return true }
         guard !planIDs.isEmpty, !actions.isEmpty,

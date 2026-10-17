@@ -10,6 +10,8 @@ struct RootView: View {
         _hasCompletedOnboarding = AppStorage(wrappedValue: false, "onboarding." + accountKey)
     }
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var health = HealthKitService.shared
 
     @Query private var tutorialPlans: [Plan]
     @Query(sort: [SortDescriptor(\ChatMessage.date)]) private var tutorialMessages: [ChatMessage]
@@ -77,6 +79,17 @@ struct RootView: View {
         .environmentObject(appState)
         .onReceive(siri.$pending) { entry in handleSiri(entry) }
         .task { handleSiri(siri.pending) }
+        .task { CoachAutomationCoordinator.shared.schedule(context: context) }
+        .onReceive(NotificationCenter.default.publisher(for: .coachLifeChanged)) { _ in
+            if scenePhase == .active { CoachAutomationCoordinator.shared.schedule(context: context) }
+        }
+        .onReceive(health.$lastSyncDate) { _ in
+            if scenePhase == .active { CoachAutomationCoordinator.shared.schedule(context: context) }
+        }
+        .onChange(of: scenePhase) { _, value in
+            CoachAutomationCoordinator.shared.setForeground(value == .active, context: context)
+        }
+        .onDisappear { CoachAutomationCoordinator.shared.invalidate() }
         .sheet(isPresented: $appState.showsCoachDay) { NavigationStack { CoachDashboardView() }.environmentObject(appState) }
         .sheet(isPresented: $appState.showsMiloChat) { CoachChatView().environmentObject(appState) }
         .sheet(isPresented: $appState.isQuickLogPresented, onDismiss: {

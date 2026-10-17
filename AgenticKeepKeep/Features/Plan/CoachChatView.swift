@@ -434,6 +434,9 @@ struct CoachChatView: View {
         var accumulatedReasoning = ""
         var reply: CoachReply?
         var proposalLifeRevision: String?
+        let sessionToken = ServiceCredentials.session?.token
+        CoachAutomationCoordinator.shared.beginConversation()
+        defer { CoachAutomationCoordinator.shared.endConversation(context: context) }
         // 每个 chunk 都重排气泡会把主线程打满，合并到 60ms 窗口（设计系统 §10）
         var throttle = StreamThrottle()
 
@@ -452,7 +455,6 @@ struct CoachChatView: View {
             profileText = "按需查询本机记录的聚合数据，未默认加载全部历史。"
 
             var searchSources: [URL] = []
-            let sessionToken = ServiceCredentials.session?.token
             let pluginDefinitions = CoachPluginTools.definitions(enabled: plugins.enabled,
                 calendarReady: CalendarPluginService.shared.fullAccess,
                 alarmReady: AlarmPluginService.available && AlarmPluginService.status == "已授权",
@@ -592,7 +594,11 @@ struct CoachChatView: View {
         assistant.pendingLifeRevision = proposalLifeRevision
         do {
             try context.save()
-        } catch { errorText = "回复未能保存，请重试。" }
+        } catch { errorText = "回复未能保存，请重试。"; return }
+        if !Task.isCancelled, reply != nil {
+            do { _ = try await CoachAutomationCoordinator.shared.applyIfAuthorized(message: assistant, context: context, token: sessionToken) }
+            catch { errorText = "自动调整未完成，请查看今日安排中的实际结果：\(error.localizedDescription)" }
+        }
     }
 
     private func loadProfile() {

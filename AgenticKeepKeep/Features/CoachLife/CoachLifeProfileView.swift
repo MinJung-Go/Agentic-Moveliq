@@ -60,6 +60,7 @@ struct CoachLifeProfileView: View {
                     .disabled(profile.protectedTimes.count >= 30)
             }
             Section {
+                NavigationLink("自动调整范围") { CoachAutomationSettingsView() }
                 NavigationLink("连接日历与其他插件") { CoachPluginsView() }
                 Button("清除这些偏好", role: .destructive) { profile = CoachLifeProfile(); save() }
             }

@@ -42,9 +42,9 @@ enum PlanMutationStore {
         return plan
     }
 
-    /// Only called by explicit UI confirmation. Replayed messages are a no-op.
+    /// Called by UI confirmation or after trusted local automation policy validation.
     @discardableResult
-    static func apply(message: ChatMessage, context: ModelContext, now: Date = .now) throws -> String? {
+    static func apply(message: ChatMessage, context: ModelContext, now: Date = .now, audit: CoachAutomationRecord? = nil) throws -> String? {
         guard message.hasPendingAdjustment else { return nil }
         guard let json = message.pendingAdjustmentJSON, json.utf8.count <= 32_768,
               let draft = try? JSONDecoder().decode(PlanAdjustmentDraft.self, from: Data(json.utf8)),
@@ -109,6 +109,10 @@ enum PlanMutationStore {
             message.adjustmentDecisionRaw = "applied"
             message.adjustmentAppliedAt = now
             message.content += (message.content.isEmpty ? "" : "\n\n") + receipt
+            if let audit {
+                audit.afterRevision = revision(plan)
+                context.insert(audit)
+            }
             try context.save()
             return receipt
         } catch { context.rollback(); throw error }
