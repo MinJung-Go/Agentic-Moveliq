@@ -183,23 +183,22 @@ struct CoachAgent {
         description: AgentPrompts.createPlanToolDescription,
         parameters: JSONSchema.object(
             properties: [
-                "title": JSONSchema.string(description: "计划名称"),
+                "title": JSONSchema.string(),
                 "goal": JSONSchema.string(
-                    description: "训练目标",
                     enumValues: ["muscleGain", "fatLoss", "strength", "general"]
                 ),
-                "weeks": JSONSchema.integer(description: "计划周数"),
+                "weeks": JSONSchema.integer(),
                 "days": JSONSchema.array(
                     items: JSONSchema.object(
                         properties: [
                             "dayOffset": JSONSchema.integer(description: "距今天数，0=今天"),
-                            "title": JSONSchema.string(description: "训练主题"),
+                            "title": JSONSchema.string(),
                             "startTime": JSONSchema.string(description: "核对生活/日历后的本地HH:mm，未知省略"),
                             "durationMinutes": JSONSchema.integer(description: "10–180分钟；有startTime时必填"),
                             "exercises": JSONSchema.array(
                                 items: JSONSchema.object(
                                     properties: [
-                                        "name": JSONSchema.string(description: "动作名称"),
+                                        "name": JSONSchema.string(),
                                         "setsText": JSONSchema.string(description: "组次，如4×10"),
                                         "targetWeightKg": JSONSchema.number(description: "kg，未知省略")
                                     ],
@@ -223,7 +222,7 @@ struct CoachAgent {
         parameters: JSONSchema.object(properties: [
             "planID": JSONSchema.string(description: "计划UUID"),
             "revision": JSONSchema.string(description: "查询所得版本"),
-            "summary": JSONSchema.string(description: "变更说明"),
+            "summary": JSONSchema.string(),
             "changes": JSONSchema.array(items: JSONSchema.object(properties: [
                 "action": JSONSchema.string(description: "delete_plan 须单独一项", enumValues: ["update", "replace", "reschedule", "deload", "skip", "add_day", "delete_day", "delete_plan", "rename_plan"]),
                 "dayID": JSONSchema.string(description: "已有训练日UUID"),
@@ -232,7 +231,7 @@ struct CoachAgent {
                 "startTime": JSONSchema.string(description: "核对后的本地HH:mm，未知省略"),
                 "durationMinutes": JSONSchema.integer(description: "10–180分钟；同步调整实际动作/组次"),
                 "weightReductionPercent": JSONSchema.integer(description: "仅deload，减重1–50%，省略=15%"),
-                "detail": JSONSchema.string(description: "原因"),
+                "detail": JSONSchema.string(),
                 "exercises": JSONSchema.array(items: JSONSchema.object(properties: [
                     "name": JSONSchema.string(description: "动作"),
                     "setsText": JSONSchema.string(description: "组次"),
