@@ -16,6 +16,7 @@ enum DataExporter {
         var healthWorkouts: [HealthWorkoutDTO]
         var reports: [ReportDTO]
         var plans: [PlanDTO]
+        var coachState: CoachStateDTO? = nil
     }
 
     struct WorkoutDTO: Encodable {
@@ -24,6 +25,8 @@ enum DataExporter {
         var note: String
         var source: String
         var exercises: [ExerciseDTO]
+        var durationMinutes: Int? = nil
+        var planDayUUID: UUID? = nil
 
         struct ExerciseDTO: Encodable {
             var name: String
@@ -101,12 +104,41 @@ enum DataExporter {
             var title: String
             var status: String
             var exercises: [PlanExerciseDTO]
+            var scheduledStart: Date? = nil
+            var durationMinutes: Int? = nil
 
             struct PlanExerciseDTO: Encodable {
                 var name: String
                 var setsText: String
                 var targetWeightKg: Double?
             }
+        }
+    }
+
+    struct CoachStateDTO: Encodable {
+        var profileJSON: String
+        var pluginsJSON: String
+        var automationJSON: String
+        var checkIns: [CheckInDTO]
+        var operations: [OperationDTO]
+        var links: [LinkDTO]
+        var automationHistory: [AutomationDTO] = []
+        struct AutomationDTO: Encodable {
+            var id: UUID; var date: Date; var ruleID: UUID; var planID: UUID
+            var beforeJSON: String; var afterJSON: String; var anchorJSON: String
+            var reason: String; var state: String; var receipt: String
+            var messageID: UUID; var afterRevision: String; var executionLifeRevision: String; var restoredAt: Date?
+        }
+        struct CheckInDTO: Encodable {
+            var id: UUID; var date: Date; var expiresAt: Date; var kind: String
+            var sessionID: UUID?; var dayID: UUID?; var minutes: Int; var availableMinutes: Int?; var difficulty: String; var timing: String; var note: String
+        }
+        struct OperationDTO: Encodable {
+            var id: UUID; var operationID: UUID; var date: Date; var kind: String; var payloadJSON: String; var state: String; var receipt: String
+        }
+        struct LinkDTO: Encodable {
+            var planID: UUID; var dayID: UUID; var eventID: String; var alarmID: UUID?; var retiredAlarmIDs: [UUID]
+            var desiredJSON: String; var calendarReceipt: String; var alarmReceipt: String; var error: String; var pending: Bool
         }
     }
 
@@ -134,7 +166,7 @@ enum DataExporter {
         )
         let plans = try context.fetch(FetchDescriptor<Plan>())
 
-        return Payload(
+        var payload = Payload(
             exportedAt: .now,
             workouts: workouts.map { session in
                 WorkoutDTO(
@@ -150,7 +182,7 @@ enum DataExporter {
                             sets: $0.setCount,
                             rpe: $0.rpe
                         )
-                    }
+                    }, durationMinutes: session.durationMinutes, planDayUUID: session.planDayUUID
                 )
             },
             meals: meals.map { meal in
@@ -222,12 +254,22 @@ enum DataExporter {
                                     setsText: $0.setsText,
                                     targetWeightKg: $0.targetWeightKg
                                 )
-                            }
+                            }, scheduledStart: day.scheduledStart, durationMinutes: day.durationMinutes
                         )
                     }
                 )
             }
         )
+        let workspace = try context.fetch(FetchDescriptor<CoachWorkspace>()).first
+        payload.coachState = CoachStateDTO(profileJSON: workspace?.profileJSON ?? "", pluginsJSON: workspace?.pluginsJSON ?? "", automationJSON: workspace?.automationJSON ?? "",
+            checkIns: try context.fetch(FetchDescriptor<CoachCheckIn>()).map { .init(id: $0.uuid, date: $0.date, expiresAt: $0.expiresAt, kind: $0.kind, sessionID: $0.sessionID, dayID: $0.dayID, minutes: $0.minutes, availableMinutes: $0.availableMinutes, difficulty: $0.difficulty, timing: $0.timing, note: $0.note) },
+            operations: try context.fetch(FetchDescriptor<CoachActionRecord>()).map { .init(id: $0.uuid, operationID: $0.operationID, date: $0.date, kind: $0.kind, payloadJSON: $0.payloadJSON, state: $0.state, receipt: $0.receipt) },
+            links: try context.fetch(FetchDescriptor<CoachTrainingLink>()).map { .init(planID: $0.planID, dayID: $0.dayID, eventID: $0.eventID, alarmID: $0.alarmID, retiredAlarmIDs: $0.retiredAlarmIDs, desiredJSON: $0.desiredJSON, calendarReceipt: $0.calendarReceipt, alarmReceipt: $0.alarmReceipt, error: $0.error, pending: $0.pending) })
+        payload.coachState?.automationHistory = try context.fetch(FetchDescriptor<CoachAutomationRecord>()).map {
+            .init(id: $0.uuid, date: $0.date, ruleID: $0.ruleID, planID: $0.planID, beforeJSON: $0.beforeJSON, afterJSON: $0.afterJSON, anchorJSON: $0.anchorJSON, reason: $0.reason, state: $0.state, receipt: $0.receipt,
+                messageID: $0.messageID, afterRevision: $0.afterRevision, executionLifeRevision: $0.executionLifeRevision, restoredAt: $0.restoredAt)
+        }
+        return payload
     }
 
     /// 写出 JSON 文件，返回可分享的文件地址

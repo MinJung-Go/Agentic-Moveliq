@@ -79,7 +79,12 @@ final class AuthStore: ObservableObject {
     }
     func lockSession(message: String?) {
         generation = UUID(); busy = false
+        CoachAutomationCoordinator.shared.invalidate()
         ServiceCredentials.clear(); ServiceTransport.shared.cancelAll()
+        CalendarPluginService.shared.reset()
+        MapsPluginService.shared.reset()
+        MusicPluginService.shared.reset()
+        SiriEntryRouter.shared.pending = nil
         ExerciseTutorialStore.shared.stopAll()
         AccountPreferences().deactivate()
         LLMSettings.shared.reloadAccountUsage()

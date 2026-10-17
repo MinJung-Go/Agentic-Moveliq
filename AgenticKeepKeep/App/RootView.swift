@@ -10,6 +10,8 @@ struct RootView: View {
         _hasCompletedOnboarding = AppStorage(wrappedValue: false, "onboarding." + accountKey)
     }
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var health = HealthKitService.shared
 
     @Query private var tutorialPlans: [Plan]
     @Query(sort: [SortDescriptor(\ChatMessage.date)]) private var tutorialMessages: [ChatMessage]
@@ -26,6 +28,7 @@ struct RootView: View {
 
     @StateObject private var appState = AppState()
     @StateObject private var logging = LoggingViewModel()
+    @ObservedObject private var siri = SiriEntryRouter.shared
 
     /// 记录弹窗默认全高（对话流需要空间），仍可下拉到半屏
     @State private var quickLogDetent: PresentationDetent = .large
@@ -74,6 +77,21 @@ struct RootView: View {
         .toolbarBackground(appState.selectedTab == .today ? Theme.conversationCanvas : Theme.canvas, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .environmentObject(appState)
+        .onReceive(siri.$pending) { entry in handleSiri(entry) }
+        .task { handleSiri(siri.pending) }
+        .task { CoachAutomationCoordinator.shared.setForeground(scenePhase == .active, context: context) }
+        .onReceive(NotificationCenter.default.publisher(for: .coachLifeChanged)) { _ in
+            if scenePhase == .active { CoachAutomationCoordinator.shared.schedule(context: context) }
+        }
+        .onReceive(health.$lastSyncDate) { _ in
+            if scenePhase == .active { CoachAutomationCoordinator.shared.schedule(context: context) }
+        }
+        .onChange(of: scenePhase) { _, value in
+            CoachAutomationCoordinator.shared.setForeground(value == .active, context: context)
+        }
+        .onDisappear { CoachAutomationCoordinator.shared.setForeground(false, context: context) }
+        .sheet(isPresented: $appState.showsCoachDay) { NavigationStack { CoachDashboardView() }.environmentObject(appState) }
+        .sheet(isPresented: $appState.showsMiloChat) { CoachChatView().environmentObject(appState) }
         .sheet(isPresented: $appState.isQuickLogPresented, onDismiss: {
             quickLogDetent = .large
         }) {
@@ -94,6 +112,20 @@ struct RootView: View {
             // 半途而废的训练草稿超过 24 小时就清掉 ——
             // 不然它们会在库里堆着，下次进来还被问「继续吗」
             WorkoutSessionViewModel.purgeStaleDrafts(in: context)
+        }
+    }
+
+    private func handleSiri(_ entry: SiriEntryRouter.Entry?) {
+        guard let entry, let session = ServiceCredentials.session,
+              entry.accountID == AppModelContainer.accountKey(userID: session.user.id, server: ServiceEndpoint.baseURL),
+              AppModelContainer.active === context.container else { return }
+        siri.pending = nil
+        switch entry.route {
+        case "today": appState.selectedTab = .today; appState.showsCoachDay = true
+        case "chat": appState.selectedTab = .today; appState.showsMiloChat = true
+        case "record":
+            appState.pendingLogText = entry.text; appState.pendingLogPhoto = nil; appState.isQuickLogPresented = true
+        default: break
         }
     }
 }

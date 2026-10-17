@@ -13,7 +13,7 @@ final class RecordImporterTests: XCTestCase {
     func testFailedPhotoIsPersistedWithTextAndExported() throws {
         let context = try makeContext()
         let photo = Data([1, 2, 3, 4])
-        RecordImporter.storeRawNote("营养标签", failureReason: "cancelled", to: context, photoData: photo)
+        try RecordImporter.storeRawNote("营养标签", failureReason: "cancelled", to: context, photoData: photo)
         let note = try XCTUnwrap(context.fetch(FetchDescriptor<RawNote>()).first)
         XCTAssertEqual(note.text, "营养标签")
         XCTAssertEqual(note.photoData, photo)
@@ -154,7 +154,7 @@ final class RecordImporterTests: XCTestCase {
     func testStoreRawNoteOnFailure() throws {
         let context = try makeContext()
 
-        RecordImporter.storeRawNote("深蹲100kg 5×5，有点累", failureReason: "解析超时", to: context)
+        try RecordImporter.storeRawNote("深蹲100kg 5×5，有点累", failureReason: "解析超时", to: context)
 
         let note = try XCTUnwrap(try context.fetch(FetchDescriptor<RawNote>()).first)
         XCTAssertEqual(note.status, .pending)

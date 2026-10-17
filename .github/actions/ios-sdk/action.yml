@@ -1,0 +1,27 @@
+name: Select supported Apple SDK
+description: Select an installed stable Xcode with iOS 26 SDK support
+runs:
+  using: composite
+  steps:
+    - name: Select Xcode 26 or later
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        import pathlib, plistlib, re, subprocess
+        candidates = []
+        for path in pathlib.Path('/Applications').glob('Xcode*.app'):
+            if 'beta' in path.name.lower():
+                continue
+            try:
+                info = plistlib.loads((path / 'Contents/Info.plist').read_bytes())
+                version = tuple(int(x) for x in re.findall(r'\d+', info['CFBundleShortVersionString'])[:3])
+                if version and version[0] >= 26:
+                    candidates.append((version, path))
+            except (OSError, ValueError, KeyError):
+                continue
+        if not candidates:
+            raise SystemExit('Xcode 26+ is required to compile and validate AlarmKit integration.')
+        chosen = max(candidates, key=lambda item: item[0])[1]
+        subprocess.run(['sudo', 'xcode-select', '-s', str(chosen / 'Contents/Developer')], check=True)
+        subprocess.run(['xcodebuild', '-version'], check=True)
+        PY

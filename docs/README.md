@@ -2,7 +2,7 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
-第 31 轮：HTTPS /api 与 WSS 生产入口适配，配合独立 Service 的 Nginx、共享租约及双副本部署。[需求](31-production-hardening/requirements.md) · [清单](31-production-hardening/checklist.md)。默认 IP 暂时保留，生产切换与 IPA 尚未执行。
+当前第 34 轮：适配日常的动态健身教练、系统插件与记录可靠性。围绕“了解日常 → 规划 → 执行 → 动态调整 → 复盘”接入生活偏好、日历、浏览器、地图、闹钟、Apple 音乐及 Siri 入口。[需求](34-agent-system-plugins/requirements.md) · [清单](34-agent-system-plugins/checklist.md) · [已确认设计稿](34-agent-system-plugins/design.html)。源码已提交功能分支，0.5.18（39）原生 CI/IPA 正在推进；最近已记录的安装版本为第 33 轮 0.5.17（38），真机验收单独记录。
 
 | 轮次 | 主题 | 文档 |
 |------|------|------|
@@ -18,6 +18,8 @@
 | 10-healthkit-sideload | HealthKit 侧载签名声明与授权重试修复 | [清单](10-healthkit-sideload/checklist.md) |
 | 20-mlx-validation | MLX Swift 独立验证 App | [需求](20-mlx-validation/requirements.md) · [清单](20-mlx-validation/checklist.md) · [设计稿](20-mlx-validation/design.html) · [验证说明](20-mlx-validation/validation.md) |
 | 21-mlx-production | 正式 App 迁移 MLX，含图文 | [需求](21-mlx-production/requirements.md) · [清单](21-mlx-production/checklist.md) |
+
+第 34 轮追加自主程度：用户选择“预设范围内自动调整，其余确认”。[授权与回执第二版](34-agent-system-plugins/design.autonomy.html) 已确认并接入设置、自动执行、授权撤销及回执/恢复；最终原生验证结果以本轮清单为准。
 
 ## 候选需求（尚未立轮次）
 
@@ -36,7 +38,7 @@
 
 | 文件 | 何时需要 | 内容 |
 |------|---------|------|
-| `requirements.md` | **除纯 bug 修复轮外都必须有** | 背景与目标、功能需求（带验收标准）、非功能需求、明确不做的范围 |
+| `requirements.md` | 每轮都要；纯 bug 轮可简写 | 背景与目标、功能需求（带验收标准）、非功能需求、范围 |
 | `checklist.md` | 每轮都要 | 实施项与验证结果：逐条对应需求、标注 CI 提交号与单测数量、记录真机复验要点 |
 
 ### 可选
@@ -48,15 +50,12 @@
 
 ### 流程
 
-1. 先写 `requirements.md`，与用户确认后再动手（**需求先于实现**）
-2. 实现过程中需求有变化，同步更新需求文档，不要只改代码
-3. 每批实现推送后等 CI 绿，检查项与验证记录写进 `checklist.md`
-4. 纯 bug 修复轮可以跳过需求文档，但 `checklist.md` 里要逐条写清：现象、根因、修复方式、验证结果
+开发顺序、设计确认、提交权限和 bug 轮文档要求统一遵循根目录 [AGENTS.md](../AGENTS.md)，这里不另行维护一套规则。历史轮次的缺失文档不要求为此追溯补齐。
 
 ## 相关
 
 - 项目说明、安装与已知限制：[README](../README.md)
-- 开发约定（构建链路、架构决策、工作流）：[CLAUDE.md](../CLAUDE.md)
+- 开发约定（构建链路、架构决策、工作流）：[AGENTS.md](../AGENTS.md)；Claude Code 入口：[CLAUDE.md](../CLAUDE.md)
 
 ## 第 11 轮
 

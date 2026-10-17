@@ -55,6 +55,12 @@ struct SettingsView: View {
                     NavigationLink { MiloSettingsView() } label: {
                         SettingsRowLabel(title: "\(displayName) · 相处方式", symbol: "person.crop.circle")
                     }
+                    NavigationLink { CoachLifeProfileView() } label: {
+                        SettingsRowLabel(title: "我的训练与日常", symbol: "person.text.rectangle")
+                    }
+                    NavigationLink { CoachPluginsView() } label: {
+                        SettingsRowLabel(title: "插件", symbol: "puzzlepiece.extension")
+                    }
                     settingsLink(.model, symbol: "cpu", detail: "云端服务")
                     settingsLink(.health, symbol: "heart", detail: healthSummary)
                 }
@@ -118,9 +124,8 @@ struct SettingsView: View {
     private var searchSection: some View {
         Section {
             Toggle("允许 \(displayName) 联网搜索", isOn: $settings.webSearchEnabled)
-                .disabled(!settings.supportsWebSearch)
         } footer: {
-            Text(settings.supportsWebSearch ? "公共主题词通过 Moveliq 服务查询，不附带个人记录。" : "管理员尚未开启联网检索。")
+            Text("教练优先打开内置浏览器，由你确认搜索摘要或网页节选；还需在插件中启用浏览器。搜索只发送公共主题词。")
         }
     }
 

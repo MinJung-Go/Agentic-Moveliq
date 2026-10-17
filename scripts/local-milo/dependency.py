@@ -9,7 +9,7 @@ import sys
 
 def inference_dependency(spec=None):
     spec = spec or pathlib.Path(__file__).resolve().parents[2] / "project.yml"
-    text = pathlib.Path(spec).read_text()
+    text = pathlib.Path(spec).read_text(encoding="utf-8")
     block = re.search(r"^  MiloInference:\n((?:    [^\n]*\n)+)", text, re.MULTILINE)
     if not block:
         raise ValueError("Missing MiloInference remote dependency in project.yml")
@@ -24,7 +24,7 @@ def inference_dependency(spec=None):
 if __name__ == "__main__":
     pin = inference_dependency()
     if sys.argv[1:] == ["--github-output"]:
-        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write("revision=" + pin["revision"] + "\n")
     else:
         print(json.dumps(pin))

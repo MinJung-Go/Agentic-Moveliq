@@ -38,6 +38,10 @@ jobs:
           ])
           SWIFT
           swift test --package-path "$audio_test_dir"
+      - name: 验证日常约束、时间窗口与时区策略
+        run: python3 scripts/test_coach_life_portable.py
+      - name: 验证实际提示词与插件工具预算
+        run: python3 scripts/test_coach_budget_portable.py
 
   test:
     name: 构建 + 单元测试
@@ -47,6 +51,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/ios-sdk
       - name: 获取固定版本的私有推理包
         uses: ./.github/actions/inference-dependency
         with:
@@ -72,6 +77,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/DerivedData \
             MOVELIQ_SERVICE_URL="$MOVELIQ_SERVICE_URL" \
+            ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log
 
       - name: 校验侧载权限嵌入流程
@@ -88,6 +94,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$UDID" \
             -derivedDataPath build/DerivedData \
             MOVELIQ_SERVICE_URL="$MOVELIQ_SERVICE_URL" \
+            ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee -a build.log
 
       - name: 留存构建日志
@@ -108,6 +115,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/ios-sdk
       - name: 获取固定版本的私有推理包
         uses: ./.github/actions/inference-dependency
         with:

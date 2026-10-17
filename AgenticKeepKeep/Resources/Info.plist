@@ -41,6 +41,14 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>用于查询你选定日历的忙闲，结合日常安排训练；日程新增、修改和删除由你确认后执行。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>用于你主动查询附近运动场地时获取当前位置；也可以手动提供地点。</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>用于选择和播放训练音乐，并按你的指令控制 Apple 音乐。</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>用于安排你确认的训练闹钟和定时提醒。</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Moveliq 读取你的健康数据（睡眠、心率、步数、运动记录），用于生成个性化的训练分析。原始健康记录保存在本机；使用 AI 功能时，相关汇总摘要经 Moveliq 服务转交模型处理。</string>
 	<key>NSCameraUsageDescription</key>

@@ -13,6 +13,7 @@ struct CoachChatView: View {
     @StateObject private var dictation = VoiceInput()
     @StateObject private var realtime = RealtimeCall()
     @State private var showsRealtime = false
+    @State private var voiceAutomationSuspended = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -20,6 +21,7 @@ struct CoachChatView: View {
 
     @Query(sort: [SortDescriptor(\ChatMessage.date)])
     private var messages: [ChatMessage]
+    @Query(sort: [SortDescriptor(\CoachActionRecord.date, order: .reverse)]) private var pluginActions: [CoachActionRecord]
 
     @State private var inputText = ""
     @State private var confirmsClearHistory = false
@@ -107,16 +109,15 @@ struct CoachChatView: View {
                 }
             }
             .environment(\.openURL, OpenURLAction { url in
-                guard settings.useLocalModel else { return .systemAction }
+                guard (try? CoachLifeStore.plugins(context).enabled.contains(.browser)) == true else { return .systemAction }
                 guard LocalBrowserPolicy.allows(url) else {
-                    appState.showToast("此验证版本暂不支持该来源的内置阅读")
-                    return .handled
+                    return .systemAction
                 }
                 Task { try? await browser.preview(url) }
                 return .handled
             })
             .sheet(isPresented: $browser.isPresented) { LocalBrowserView(browser: browser) }
-            .onDisappear { dictation.finish(); realtime.end(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
+            .onDisappear { dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { dictation.finish(); realtime.pause() }
             }
@@ -164,9 +165,9 @@ struct CoachChatView: View {
         .overlay {
             if showsRealtime {
                 RealtimeCallView(call: realtime, name: displayName, onEnd: {
-                    realtime.end(); showsRealtime = false
+                    finishRealtime()
                 }, onReview: { request in
-                    realtime.end(); showsRealtime = false
+                    finishRealtime()
                     guard !isSending else { return }
                     isSending = true
                     streamTask = Task { await send(suppliedText: request) }
@@ -177,6 +178,7 @@ struct CoachChatView: View {
     }
 
     private func openRealtime() {
+        if !voiceAutomationSuspended { CoachAutomationCoordinator.shared.beginConversation(); voiceAutomationSuspended = true }
         dictation.finish()
         isInputFocused = false
         realtime.open(history: messages.suffix(12).map { (role: $0.role.rawValue, text: $0.content) })
@@ -186,6 +188,12 @@ struct CoachChatView: View {
             catch { appState.showToast("通话文字保存失败，请检查存储空间") }
         }
         showsRealtime = true
+    }
+    private func finishRealtime() {
+        realtime.end(); showsRealtime = false
+        if voiceAutomationSuspended {
+            voiceAutomationSuspended = false; CoachAutomationCoordinator.shared.endConversation(context: context)
+        }
     }
 
     private var pendingPlan: ChatMessage? {
@@ -262,6 +270,9 @@ struct CoachChatView: View {
                     if isSending {
                         streamingBubble.id(Self.streamingAnchor)
                     }
+                    ForEach(pluginActions.filter { ["pending", "partial", "executing"].contains($0.state) || ($0.state == "succeeded" && $0.date.timeIntervalSinceNow > -1800) }.prefix(12), id: \.uuid) { action in
+                        CoachPluginActionCard(action: action)
+                    }
 
                     if let errorText {
                         Text(errorText)
@@ -337,7 +348,10 @@ struct CoachChatView: View {
                     .buttonStyle(.plain)
                 }
 
-                if message.pendingPlanJSON != nil && message.planDecisionRaw != "rejected" {
+                if message.pendingPlanJSON != nil && !["rejected", "superseded"].contains(message.planDecisionRaw ?? "") {
+                    if message.hasPendingPlan {
+                        Text("确认后替换进行中的课程表。按插件设置同步未来训练的关联日历与提醒；已完成记录保留。").font(.footnote).foregroundStyle(Theme.secondaryLabel)
+                    }
                     PlanDraftCard(message: message, showsActions: message.id != pendingPlan?.id) { plan in
                         accept(plan: plan, message: message)
                     } onReject: {
@@ -345,7 +359,7 @@ struct CoachChatView: View {
                     }
                 }
 
-                if message.pendingAdjustmentJSON != nil && message.adjustmentDecisionRaw != "rejected" {
+                if message.pendingAdjustmentJSON != nil && !["rejected", "superseded"].contains(message.adjustmentDecisionRaw ?? "") {
                     AdjustmentDraftCard(message: message) { draft in
                         apply(adjustment: draft, message: message)
                     } onReject: {
@@ -427,6 +441,10 @@ struct CoachChatView: View {
         var accumulatedText = ""
         var accumulatedReasoning = ""
         var reply: CoachReply?
+        var proposalLifeRevision: String?
+        let sessionToken = ServiceCredentials.session?.token
+        CoachAutomationCoordinator.shared.beginConversation()
+        defer { CoachAutomationCoordinator.shared.endConversation(context: context) }
         // 每个 chunk 都重排气泡会把主线程打满，合并到 60ms 窗口（设计系统 §10）
         var throttle = StreamThrottle()
 
@@ -435,10 +453,21 @@ struct CoachChatView: View {
             var coachContext = CoachContext()
             coachContext.persona = MiloPersona(defaults: .standard)
             coachContext.planState = try CoachPlanContext.build(context: context, query: text)
+            let plugins = try CoachLifeStore.plugins(context)
+            let lifeProfile = try CoachLifeStore.profile(context)
+            proposalLifeRevision = try CoachLifeContextBuilder.revision(context: context)
+            coachContext.lifeContext = lifeProfile.summary
+            if lifeProfile.confirmed || text.range(of: "计划|安排|规划|调整|加班|出差|疲惫|复盘|漏练|只有.*分钟", options: .regularExpression) != nil {
+                coachContext.lifeContext = CoachToolClient.bounded(try CoachLifeContextBuilder.summary(context: context), bytes: 7000)
+            }
             profileText = "按需查询本机记录的聚合数据，未默认加载全部历史。"
 
             var searchSources: [URL] = []
-            let queryTools = CoachTools(webSearchEnabled: settings.webSearchEnabled && settings.supportsWebSearch, onActivity: { activity in
+            let pluginDefinitions = CoachPluginTools.definitions(enabled: plugins.enabled,
+                calendarReady: CalendarPluginService.shared.fullAccess,
+                alarmReady: AlarmPluginService.available && AlarmPluginService.status == "已授权",
+                musicReady: MusicPluginService.shared.authorized)
+            let queryTools = CoachTools(webSearchEnabled: settings.webSearchEnabled && plugins.enabled.contains(.browser), pluginDefinitions: pluginDefinitions, onActivity: { activity in
                 guard memoryStore.generation == generation else { return }
                 if let index = toolActivities.firstIndex(where: { $0.id == activity.id }) {
                     toolActivities[index] = activity
@@ -448,6 +477,11 @@ struct CoachChatView: View {
             }) { call in
                 try Task.checkCancellation()
                 guard memoryStore.generation == generation else { throw CancellationError() }
+                try CoachLifeStore.checkAccount(context: context, token: sessionToken)
+                if pluginDefinitions.contains(where: { $0.name == call.name }) {
+                    return try await CoachPluginExecutor.execute(call, context: context, token: sessionToken,
+                        allowsNearby: text.range(of: "附近|周边|身边|当前位置", options: .regularExpression) != nil)
+                }
                 if call.name == CoachTools.records.name {
                     guard let query = CoachAgent.decodeArguments(CoachRecordQuery.self, from: call) else {
                         return CoachToolResult(content: "查询参数无效，请提供类型和 yyyy-MM-dd 日期范围。", failed: true)
@@ -459,22 +493,20 @@ struct CoachChatView: View {
                     }
                 }
                 if call.name == CoachTools.reader.name {
-                    guard settings.webSearchEnabled && settings.supportsWebSearch,
+                    guard settings.webSearchEnabled, try CoachLifeStore.plugins(context).enabled.contains(.browser),
                           let args = CoachAgent.decodeArguments(WebReaderArguments.self, from: call),
                           args.sourceIndex > 0, args.sourceIndex <= searchSources.count else {
                         return CoachToolResult(content: "请先搜索，再选择本轮返回的有效来源编号。未读取网页。", failed: true)
                     }
-                    if settings.useLocalModel { return try await browser.read(searchSources[args.sourceIndex - 1]) }
-                    return try await GLMWebReader(config: client.config).read(url: searchSources[args.sourceIndex - 1])
+                    return try await browser.read(searchSources[args.sourceIndex - 1])
                 }
-                guard settings.webSearchEnabled && settings.supportsWebSearch,
+                guard settings.webSearchEnabled, try CoachLifeStore.plugins(context).enabled.contains(.browser),
                       let args = CoachAgent.decodeArguments(FitnessSearchArguments.self, from: call) else {
                     return CoachToolResult(content: "联网搜索未启用，或公共主题不受支持。没有执行搜索。", failed: true)
                 }
                 let count = args.count ?? GLMWebSearch.defaultResultCount
                 let result: CoachToolResult
-                if settings.useLocalModel { result = try await browser.search(topic: args.topic, count: count) }
-                else { result = try await GLMWebSearch(config: client.config).search(topic: args.topic, count: count) }
+                result = try await browser.search(topic: args.topic, count: count)
                 searchSources = result.sources
                 return result
             }
@@ -557,13 +589,24 @@ struct CoachChatView: View {
             pendingAdjustmentJSON: reply?.adjustmentArgumentsJSON,
             reasoningText: finalReasoning.isEmpty ? nil : finalReasoning
         )
+        if reply?.planArgumentsJSON != nil || reply?.adjustmentArgumentsJSON != nil {
+            for previous in messages {
+                if previous.hasPendingPlan { previous.planDecisionRaw = "superseded" }
+                if previous.hasPendingAdjustment { previous.adjustmentDecisionRaw = "superseded" }
+            }
+        }
         if !toolActivities.isEmpty, let data = try? JSONEncoder().encode(toolActivities) {
             assistant.toolActivityJSON = String(data: data, encoding: .utf8)
         }
         context.insert(assistant)
+        assistant.pendingLifeRevision = proposalLifeRevision
         do {
             try context.save()
-        } catch { errorText = "回复未能保存，请重试。" }
+        } catch { errorText = "回复未能保存，请重试。"; return }
+        if !Task.isCancelled, reply != nil {
+            do { _ = try await CoachAutomationCoordinator.shared.applyIfAuthorized(message: assistant, context: context, token: sessionToken) }
+            catch { errorText = "自动调整未完成，请查看今日安排中的实际结果：\(error.localizedDescription)" }
+        }
     }
 
     private func loadProfile() {
@@ -573,22 +616,41 @@ struct CoachChatView: View {
 
     /// 把计划草稿写入课程表
     private func accept(plan draft: PlanDraft, message: ChatMessage) {
+        let accepted: Plan
         do {
-            guard try CoachPlanImporter.accept(draft, message: message, context: context) != nil else { return }
+            if let revision = message.pendingLifeRevision, revision != (try CoachLifeContextBuilder.revision(context: context)) { throw CoachPluginError.stale }
+            try CoachScheduleGuard.validate(draft, context: context)
+            guard let plan = try CoachPlanImporter.accept(draft, message: message, context: context) else { return }
+            accepted = plan
         } catch {
             context.rollback()
-            appState.showToast("保存计划失败，请重试")
+            appState.showToast("计划未保存：\(error.localizedDescription)")
             return
         }
 
         Haptics.success()
         appState.showToast("已加入课程表：\(draft.title)")
+        do {
+            try TrainingScheduleSync.enqueue(planID: accepted.uuid, context: context)
+            for plan in (try context.fetch(FetchDescriptor<Plan>())).filter({ !$0.isActive }) {
+                try TrainingScheduleSync.enqueue(planID: plan.uuid, context: context)
+            }
+            Task { appState.showToast(await TrainingScheduleSync.retry(context: context)) }
+        } catch { appState.showToast("课程表已保存，关联同步尚未准备好：\(error.localizedDescription)") }
     }
 
     /// 把教练的调整建议落到课程表（仅用户确认后生效）
     private func apply(adjustment: PlanAdjustmentDraft, message: ChatMessage) {
         do {
+            if let revision = message.pendingLifeRevision, revision != (try CoachLifeContextBuilder.revision(context: context)) { throw CoachPluginError.stale }
+            try CoachScheduleGuard.validate(adjustment, context: context)
             if let receipt = try PlanMutationStore.apply(message: message, context: context) {
+                if let id = adjustment.planID.flatMap(UUID.init(uuidString:)) {
+                    do {
+                        try TrainingScheduleSync.enqueue(planID: id, context: context)
+                        Task { appState.showToast(await TrainingScheduleSync.retry(context: context)) }
+                    } catch { appState.showToast("课程表已调整，关联同步待处理：\(error.localizedDescription)"); return }
+                }
                 Haptics.success()
                 appState.showToast(receipt)
             }
@@ -603,7 +665,7 @@ struct CoachChatView: View {
 
     private func clearHistory() {
         dictation.finish()
-        realtime.end(); showsRealtime = false
+        finishRealtime()
         stopStreaming()
         toolActivities = []
         isSending = false
@@ -682,6 +744,7 @@ struct PlanDraftCard: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                                 Text(day.title)
                                     .font(Theme.Font.subheadline.weight(.semibold))
+                                if let time = day.startTime { Text("\(time)\(day.durationMinutes.map { " · \($0)分钟" } ?? "")").font(.footnote) }
 
                                 VStack(spacing: Theme.Spacing.s) {
                                     ForEach(Array(day.exercises.enumerated()), id: \.offset) { _, exercise in
@@ -813,6 +876,9 @@ struct AdjustmentDraftCard: View {
                                 .font(Theme.Font.footnote)
                             if let title = change.title { Text("新名称：\(title)") }
                             if let date = change.date { Text("日期：\(date)") }
+                            if let time = change.startTime { Text("开始：\(time)") }
+                            if let minutes = change.durationMinutes { Text("时长：\(minutes)分钟") }
+                            if change.action == "deload" { Text("重量降低\(change.weightReductionPercent ?? 15)%（按0.5 kg取整）") }
                             if let exercises = change.exercises {
                                 ForEach(Array(exercises.enumerated()), id: \.offset) { _, exercise in
                                     Text("\(exercise.name) · \(exercise.setsText)" + (exercise.targetWeightKg.map { " · \(Format.number($0, decimals: $0.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 1))kg" } ?? " · 未设目标重量"))

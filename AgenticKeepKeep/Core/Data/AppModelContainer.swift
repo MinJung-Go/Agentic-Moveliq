@@ -35,7 +35,8 @@ enum AppModelContainer {
             PlanExercise.self,
             ChatMessage.self,
             SetLog.self,
-            WorkoutSessionDraft.self
+            WorkoutSessionDraft.self,
+            CoachWorkspace.self, CoachCheckIn.self, CoachActionRecord.self, CoachTrainingLink.self, CoachAutomationRecord.self
         ])
     }
 

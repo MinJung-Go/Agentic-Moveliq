@@ -44,12 +44,16 @@ private struct PlanDeletionConfirmation: ViewModifier {
                     do {
                         try PlanMutationStore.delete(id: value.id, context: context)
                         appState.showToast("课程表已删除，训练记录已保留")
+                        do {
+                            try TrainingScheduleSync.enqueue(planID: value.id, context: context)
+                            Task { appState.showToast(await TrainingScheduleSync.retry(context: context)) }
+                        } catch { appState.showToast("课程表已删除，关联日历与提醒清理待处理：\(error.localizedDescription)") }
                     } catch { self.error = error.localizedDescription }
                     target = nil
                 }
                 Button("取消", role: .cancel) { target = nil }
             } message: { _ in
-                Text("将删除这份计划及其训练日、动作。已有训练记录和 Apple 健康数据会保留。")
+                Text("将删除这份计划及其训练日、动作，并清理 Moveliq 关联的未来日程与闹钟。已有训练记录和 Apple 健康数据会保留；同步失败可在今日安排重试。")
             }
             .alert("删除失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                 Button("知道了", role: .cancel) { error = nil }

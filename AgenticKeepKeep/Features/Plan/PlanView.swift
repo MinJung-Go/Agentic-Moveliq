@@ -229,6 +229,9 @@ struct PlanDayRow: View {
                 Text(day.title)
                     .font(isDimmed ? Theme.Font.subheadline : Theme.Font.subheadline.weight(.semibold))
                     .foregroundStyle(isDimmed ? Theme.secondaryLabel : Color.primary)
+                if let start = day.scheduledStart {
+                    Text("\(CoachLifeTime.display(start))\(day.durationMinutes.map { " · \($0)分钟" } ?? "")").font(.footnote).foregroundStyle(Theme.secondaryLabel)
+                }
 
                 Text(day.exerciseSummary)
                     .font(Theme.Font.badge)
@@ -290,6 +293,8 @@ struct PlanDayDetailView: View {
     @State private var deletionName = ""
     @State private var isDeleteConfirmationPresented = false
     @State private var deletionError: String?
+    @State private var syncMessage: String?
+    @State private var isSyncing = false
 
     var body: some View {
         List {
@@ -304,9 +309,23 @@ struct PlanDayDetailView: View {
                 .listRowSeparator(.hidden)
 
                 TextField("主题", text: $day.title)
-                DatePicker("日期", selection: $day.date, displayedComponents: .date)
+                DatePicker("日期", selection: Binding(get: { day.date }, set: { date in
+                    if let start = day.scheduledStart {
+                        let minute = Calendar.current.component(.hour, from: start) * 60 + Calendar.current.component(.minute, from: start)
+                        guard let adjusted = CoachLifeTime.at(minute: minute, on: date) else { syncMessage = "该日期不存在这个当地时间，请重新安排。"; return }
+                        day.scheduledStart = adjusted
+                    }
+                    day.date = date
+                }), displayedComponents: .date)
+                if let start = day.scheduledStart {
+                    Text("具体开始：\(CoachLifeTime.display(start))").font(.footnote)
+                }
                 TextField("备注（调整说明）", text: $day.note, axis: .vertical)
                     .lineLimit(1...3)
+                if day.scheduledStart != nil {
+                    Button(isSyncing ? "正在同步…" : "保存并同步关联日历与提醒") { syncSchedule() }.disabled(isSyncing)
+                    if let syncMessage { Text(syncMessage).font(.footnote).foregroundStyle(Theme.secondaryLabel) }
+                }
             } header: {
                 Text("训练日")
             }
@@ -362,6 +381,8 @@ struct PlanDayDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { EditButton() }
         }
+        .onChange(of: day.status) { _, _ in _ = prepareSync() }
+        .onChange(of: day.date) { _, _ in _ = prepareSync() }
         .safeAreaInset(edge: .bottom) {
             // 已完成的日子也能从这里重开（补练）
             NavigationLink {
@@ -381,6 +402,20 @@ struct PlanDayDetailView: View {
                 }
             }
         }
+    }
+
+    private func prepareSync() -> Bool {
+        guard let id = day.plan?.uuid else { return false }
+        do {
+            try TrainingScheduleSync.enqueue(planID: id, context: context)
+            syncMessage = "课程表已保存。若修改了未来安排，请确认同步；系统中的旧日程与提醒尚未改动。"
+            NotificationCenter.default.post(name: .coachLifeChanged, object: nil)
+            return true
+        } catch { syncMessage = "同步尚未准备好：\(error.localizedDescription)"; return false }
+    }
+    private func syncSchedule() {
+        guard !isSyncing, prepareSync() else { return }; isSyncing = true
+        Task { syncMessage = await TrainingScheduleSync.retry(context: context); isSyncing = false }
     }
 
     /// 拖拽排序：`onMove` 只给出新的顺序，`order` 字段要自己写回去

@@ -42,6 +42,19 @@ final class PlanMutationTests: XCTestCase {
         XCTAssertTrue(message.content.contains("已更新"))
     }
 
+    func testTimedRescheduleKeepsExactStartAndChangesActualDuration() throws {
+        let (context, plan, day) = try fixture()
+        day.scheduledStart = CoachLifeTime.at(minute: 19 * 60, on: day.date); day.durationMinutes = 45
+        let message = try proposal([["action": "reschedule", "dayID": day.uuid.uuidString, "date": "2027-01-04", "startTime": "20:30", "durationMinutes": 20, "detail": "加班后缩短训练"]], plan: plan, context: context)
+        _ = try PlanMutationStore.apply(message: message, context: context)
+        let start = try XCTUnwrap(day.scheduledStart)
+        XCTAssertTrue(Calendar.current.isDate(start, inSameDayAs: try XCTUnwrap(PlanMutationStore.localDate("2027-01-04"))))
+        XCTAssertEqual(Calendar.current.component(.hour, from: start), 20)
+        XCTAssertEqual(Calendar.current.component(.minute, from: start), 30)
+        XCTAssertEqual(day.durationMinutes, 20); XCTAssertNil(message.adjustmentUndoJSON)
+        XCTAssertNil(try PlanMutationStore.apply(message: message, context: context))
+    }
+
     func testRescheduleUsesAbsoluteDateEvenWhenConfirmedLater() throws {
         let (context, plan, day) = try fixture()
         let message = try proposal([["action": "reschedule", "dayID": day.uuid.uuidString, "date": "2026-10-02", "detail": "顺延"]], plan: plan, context: context)

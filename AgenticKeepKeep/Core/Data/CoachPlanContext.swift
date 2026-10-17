@@ -23,6 +23,8 @@ enum CoachPlanContext {
         let total = ordered.reduce(0) { $0 + max(1, $1.exercises.count) }
         for day in ordered {
             let prefix = "dayID=\(day.uuid.uuidString) \(formatter.string(from: day.date)) \(String(day.title.prefix(60))) [\(day.statusRaw)]"
+                + (day.scheduledStart.map { " 开始=\(CoachLifeTime.iso($0))" } ?? " 未设具体时间")
+                + (day.durationMinutes.map { " 时长=\($0)分钟" } ?? "")
             let exercises = day.exercises.sorted { $0.order < $1.order }
             let rows = exercises.isEmpty ? [prefix] : exercises.map { exercise in
                 prefix + "：\(String(exercise.name.prefix(80))) \(String(exercise.setsText.prefix(60)))" +

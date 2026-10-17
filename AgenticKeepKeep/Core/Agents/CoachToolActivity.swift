@@ -20,6 +20,12 @@ struct CoachToolActivity: Codable, Identifiable, Equatable {
     static func title(for call: LLMToolCall) -> String {
         if call.name == CoachTools.search.name { return "搜索公开健身资料" }
         if call.name == CoachTools.reader.name { return "阅读公开网页" }
+        let pluginTitles = ["query_life_context": "核对日常与训练安排", "query_calendar": "查询所选日历",
+            "propose_calendar_change": "准备日程确认卡", "query_moveliq_alarms": "查询 Moveliq 闹钟",
+            "propose_alarm_change": "准备闹钟确认卡", "search_places": "搜索地图地点",
+            "propose_map_route": "准备路线确认卡", "search_apple_music": "搜索 Apple 音乐",
+            "propose_music_playback": "准备音乐确认卡", "control_apple_music": "核对音乐操作"]
+        if let title = pluginTitles[call.name] { return title }
         switch call.arguments?.objectValue?["kind"]?.stringValue {
         case "health": return "查询健康数据"
         case "training": return "查询训练记录"

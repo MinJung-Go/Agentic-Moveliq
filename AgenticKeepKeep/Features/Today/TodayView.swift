@@ -28,6 +28,7 @@ struct TodayView: View {
     }
     @State private var chatEntry: ChatEntry?
     @State private var choosesIntent = false
+    @State private var coachingSignalCount = 0
 
     /// 今日页输入条里敲的内容（还没提交，所以不进 ViewModel）
     @State private var showsHealthDetails = false
@@ -84,6 +85,10 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     greeting.staggeredAppear(0)
+                    NavigationLink { CoachDashboardView() } label: {
+                        Label(coachingSignalCount > 0 ? "今日安排 · \(coachingSignalCount)项需要再看看" : "今日安排 · 结合日常一起规划", systemImage: "calendar.badge.clock")
+                            .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }.buttonStyle(.plain)
                     planSection.staggeredAppear(1)
                     recordsSection.staggeredAppear(2)
                     if !snapshots.isEmpty { healthSection }
@@ -124,11 +129,15 @@ struct TodayView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { inputBar }
             .refreshable { await syncHealth(force: true) }
-            .task { await syncHealth(force: false) }
+            .task { refreshCoachSignals(); await syncHealth(force: false); refreshCoachSignals() }
+            .onReceive(NotificationCenter.default.publisher(for: .coachLifeChanged)) { _ in refreshCoachSignals() }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in refreshCoachSignals() }
+            .onChange(of: health.lastSyncDate) { refreshCoachSignals() }
         }
     }
 
     // MARK: - 问候
+    private func refreshCoachSignals() { coachingSignalCount = (try? CoachLifeContextBuilder.signals(context: context).count) ?? 0 }
 
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -327,6 +336,10 @@ struct TodayView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(day.title)
                                     .font(Theme.Font.headline)
+                                if let start = day.scheduledStart {
+                                    Text("\(CoachLifeTime.display(start))\(day.durationMinutes.map { " · \($0)分钟" } ?? "")")
+                                        .font(.footnote).foregroundStyle(Theme.Journal.secondary)
+                                }
                                 Text(day.exerciseSummary)
                                     .font(Theme.Font.caption)
                                     .foregroundStyle(Theme.secondaryLabel)

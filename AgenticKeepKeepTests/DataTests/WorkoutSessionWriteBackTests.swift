@@ -122,6 +122,16 @@ final class WorkoutSessionWriteBackTests: XCTestCase {
         XCTAssertTrue(try context.fetch(FetchDescriptor<WorkoutSessionDraft>()).isEmpty)
     }
 
+    func testFinishedWorkoutHasLifeFeedbackIdentityAndCannotBeSavedTwice() throws {
+        let context = try makeContext(), day = makePlanDay(in: context)
+        let model = WorkoutSessionViewModel(planDay: day, context: context)
+        model.completeCurrentSet(); XCTAssertTrue(model.finish(planDay: day))
+        let session = try XCTUnwrap(context.fetch(FetchDescriptor<WorkoutSession>()).first)
+        XCTAssertEqual(session.planDayUUID, day.uuid); XCTAssertEqual(session.uuid, model.completedSessionID)
+        XCTAssertGreaterThan(try XCTUnwrap(session.durationMinutes), 0)
+        XCTAssertFalse(model.finish(planDay: day)); XCTAssertEqual(try context.fetchCount(FetchDescriptor<WorkoutSession>()), 1)
+    }
+
     /// 第 4 组减重：汇总行取**最重的那组**当代表，逐组实情留在 SetLog 上
     func testRepresentativeWeightIsTheHeaviestSet() throws {
         let context = try makeContext()
