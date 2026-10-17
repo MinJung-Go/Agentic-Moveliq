@@ -92,7 +92,7 @@ struct CoachPluginsView: View {
     }
     private func load() {
         do { config = try CoachLifeStore.plugins(context); token = ServiceCredentials.session?.token; loaded = true }
-        catch { error = error.localizedDescription }
+        catch { self.error = error.localizedDescription }
     }
     private func authorize(_ operation: @escaping @MainActor () async throws -> Void) {
         guard !busy else { return }; busy = true; let marker = token
