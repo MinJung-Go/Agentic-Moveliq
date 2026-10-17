@@ -22,6 +22,7 @@ def main():
                        "Agents/CoachContextPolicy.swift", "Agents/CoachLifeTypes.swift", "Agents/CoachPluginTools.swift"]:
             shutil.copyfile(CORE / source, target / pathlib.Path(source).name)
         (target / "Context.swift").write_text("import Foundation\n" + between(
+            CORE / "Data/Models.swift", "enum ChatRole:", "/// 训练目标") + between(
             CORE / "Agents/AgentModels.swift", "struct CoachTurn:", "struct PlanDraft:"), encoding="utf-8")
         agent = CORE / "Agents/CoachAgent.swift"
         (target / "Agent.swift").write_text("import Foundation\nenum CoachAgent {\n" + between(
