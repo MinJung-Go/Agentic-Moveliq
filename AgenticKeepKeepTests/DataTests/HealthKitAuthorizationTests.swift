@@ -83,6 +83,23 @@ final class HealthKitAuthorizationTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: HealthKitService.stateKey), "requested")
     }
 
+    func testDisabledAccountHealthConnectionDoesNotImport() async throws {
+        let suite = "HealthKitDisabled-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let service = HealthKitService(defaults: defaults, authorizationRequest: { _ in }, healthDataAvailable: { true })
+        let requested = await service.requestAuthorization()
+        XCTAssertTrue(requested)
+        let container = try AppModelContainer.inMemory()
+        var config = CoachPluginConfiguration(); config.healthEnabled = false
+        try CoachLifeStore.save(plugins: config, in: container.mainContext)
+        await service.sync(into: container.mainContext)
+        XCTAssertNil(service.lastSyncDate)
+        XCTAssertNil(service.lastError)
+        XCTAssertFalse(service.isSyncing)
+        XCTAssertEqual(try container.mainContext.fetchCount(FetchDescriptor<HealthSnapshot>()), 0)
+    }
+
     func testFailedAuthorizationDoesNotSyncOrOverwriteError() async throws {
         let suite = "HealthKitFailure-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

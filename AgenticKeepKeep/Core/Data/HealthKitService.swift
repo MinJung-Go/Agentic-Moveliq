@@ -187,6 +187,11 @@ final class HealthKitService: ObservableObject {
     @discardableResult
     func authorizeAndSync(into context: ModelContext) async -> Bool {
         guard await requestAuthorization() else { return false }
+        do {
+            var config = try CoachLifeStore.plugins(context)
+            config.healthEnabled = true
+            try CoachLifeStore.save(plugins: config, in: context)
+        } catch { lastError = "健康连接设置未保存：\(error.localizedDescription)"; return false }
         await sync(days: 30, into: context)
         return lastError == nil
     }
@@ -207,6 +212,9 @@ final class HealthKitService: ObservableObject {
             return
         }
         guard !isSyncing, !isAuthorizing, authorizationState == .requested else { return }
+        do {
+            guard try CoachLifeStore.plugins(context).healthEnabled != false else { return }
+        } catch { lastError = "无法读取健康连接设置：\(error.localizedDescription)"; return }
 
         let accountMarker = accountGeneration
         isSyncing = true
@@ -248,6 +256,10 @@ final class HealthKitService: ObservableObject {
                 end: end
             )
 
+            let workouts = try await fetchWorkouts(start: startDay, end: end)
+            guard accountMarker == accountGeneration,
+                  try CoachLifeStore.plugins(context).healthEnabled != false else { return }
+
             try upsertSnapshots(
                 days: days,
                 startDay: startDay,
@@ -259,7 +271,6 @@ final class HealthKitService: ObservableObject {
                 context: context
             )
 
-            let workouts = try await fetchWorkouts(start: startDay, end: end)
             try upsertWorkouts(workouts, context: context)
 
             try context.save()

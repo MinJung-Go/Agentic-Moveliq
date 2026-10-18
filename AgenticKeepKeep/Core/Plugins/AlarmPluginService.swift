@@ -28,6 +28,19 @@ enum AlarmPluginService {
         #endif
         return "需要 iOS 26 或更新版本"
     }
+    static var connectionAccess: ServiceConnectionAccess {
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            switch AlarmManager.shared.authorizationState {
+            case .authorized: return .authorized
+            case .denied: return .denied
+            case .notDetermined: return .notDetermined
+            @unknown default: return .unavailable
+            }
+        }
+        #endif
+        return .unavailable
+    }
     static func authorize() async throws {
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *) { _ = try await AlarmManager.shared.requestAuthorization(); return }
