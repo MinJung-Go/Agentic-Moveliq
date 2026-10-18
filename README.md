@@ -15,7 +15,7 @@
 
 ---
 
-> 最新打包版本：**[0.5.18（39）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058061133/artifacts/12110533955)**，标签 `v0.5.18`。第 34 轮已接入动态教练、生活约束与反馈、日历/浏览器/地图/闹钟/Apple 音乐插件、Siri 入口和预设范围内自动调整，并修复记录可靠性问题；正式标签 CI 的 **565/565 项 iOS 单测通过**，归档与包内容已核验。需侧载重签名，系统权限、音乐配置及真机验收边界见[本轮清单](docs/34-agent-system-plugins/checklist.md)。默认服务为 `https://moveliq.work/api`；本地模型下载与加载保持停用。
+> 最新打包版本：**[0.5.19（40）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39134986064/artifacts/12140041292)**，标签 `v0.5.19`。第 35 轮已按确认的第二版接入首次服务连接引导及设置补连：选择服务后一个按钮逐项请求系统授权，支持跳过、部分完成和补连，保留日历范围与训练调整规则；正式标签 CI 的 **582/582 项 iOS 单测通过**。归档、包内容核验及真机验收边界见[发布记录](docs/35-service-connection/validation.md)。保留第 34 轮动态教练、系统插件与 Siri 入口。需侧载重签名，默认服务为 `https://moveliq.work/api`；本地模型下载与加载保持停用。
 
 ## 界面示意
 
@@ -58,6 +58,7 @@ HTML 文件可下载后在浏览器打开；GitHub 文件页展示的是源码�
 - **对话式课程表**：和 Milo 说明目标与器械，通过 function call 生成周期化计划，确认后写入；支持手动增删改，也支持让 Milo 提出减载/换动作建议
 - **结合日常动态调整**：纳入个人可训练时段、所选日历忙闲、临时状态、健康与训练反馈；用户保存完整规则后可在范围内自动调整，越界继续确认，保留调整原因、同步回执和恢复入口
 - **对话中的系统插件**：按账号启用日历、内置浏览器、地图、闹钟和 Apple 音乐；日历增改删及独立闹钟/音乐操作有确认卡，网页内容由用户手动提取；闹钟要求 iOS 26+，音乐曲库还需 MusicKit App Service 与实际签名配置
+- **首次服务连接引导**：首次登录主动展示 Milo 欢迎区与两列服务选择，一个按钮按顺序请求所选服务的系统授权；可跳过或稍后从“设置 → 插件”补连，详细设置折叠保留
 - **Siri 与快捷指令入口**：打开 Milo、打开今日训练、准备记录草稿；记录继续在 App 中确认
 - **饮食分析**：日均热量与宏营养素、蛋白质目标缺口、每日热量图
 - **照片估算热量**：拍一张食物照片，估算组成与热量（标注为 AI 估算，可修正）
@@ -69,7 +70,7 @@ HTML 文件可下载后在浏览器打开；GitHub 文件页展示的是源码�
 
 ### 方式一：下载未签名 IPA（不需要 Mac）
 
-[0.5.18（39）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058061133/artifacts/12110533955)：第 34 轮动态教练与系统插件版本，565/565 项 iOS XCTest、音频专项、策略及提示词预算检查通过，归档和包内容已核验。下载 artifact 并解压，使用 AltStore / Sideloadly 等工具重新签名安装。安装后在“设置 → 插件”启用需要的能力，在“我的训练与日常 → 自动调整范围”保存规则；真机验收及 MusicKit 配置见[发布与验证记录](docs/34-agent-system-plugins/validation.md)。
+[0.5.19（40）IPA](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39134986064/artifacts/12140041292)：第 35 轮首次服务连接版本，582/582 项 iOS XCTest、音频专项、策略及提示词预算检查通过。下载 artifact 并解压，使用 AltStore / Sideloadly 等工具重新签名安装。新账号首次登录会主动展示服务连接引导，已有账号从“设置 → 插件”进入；系统权限仍需逐项允许。在“我的训练与日常 → 自动调整范围”保存动态调整规则；包内容核验与真机边界见[本轮验证记录](docs/35-service-connection/validation.md)，既有插件与 MusicKit 配置见[第 34 轮记录](docs/34-agent-system-plugins/validation.md)。
 
 <details>
 <summary>历史本地模型版本（当前已停用）</summary>
