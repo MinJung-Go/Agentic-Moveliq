@@ -100,6 +100,21 @@ final class HealthKitAuthorizationTests: XCTestCase {
         XCTAssertEqual(try container.mainContext.fetchCount(FetchDescriptor<HealthSnapshot>()), 0)
     }
 
+    func testAccountSwitchDuringHealthRequestDoesNotEnableOldAccount() async throws {
+        let suite = "HealthKitAccountSwitch-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var service: HealthKitService!
+        service = HealthKitService(defaults: defaults, authorizationRequest: { _ in
+            service.reloadAccountMetadata()
+        }, healthDataAvailable: { true })
+        let container = try AppModelContainer.inMemory()
+        let succeeded = await service.authorizeAndSync(into: container.mainContext)
+        XCTAssertFalse(succeeded)
+        XCTAssertNil(try CoachLifeStore.plugins(container.mainContext).healthEnabled)
+        XCTAssertNil(service.lastSyncDate)
+    }
+
     func testFailedAuthorizationDoesNotSyncOrOverwriteError() async throws {
         let suite = "HealthKitFailure-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

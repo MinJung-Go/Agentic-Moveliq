@@ -186,14 +186,15 @@ final class HealthKitService: ObservableObject {
     /// 授权失败时停止，不让同步覆盖原始错误。
     @discardableResult
     func authorizeAndSync(into context: ModelContext) async -> Bool {
-        guard await requestAuthorization() else { return false }
+        let marker = accountGeneration
+        guard await requestAuthorization(), marker == accountGeneration else { return false }
         do {
             var config = try CoachLifeStore.plugins(context)
             config.healthEnabled = true
             try CoachLifeStore.save(plugins: config, in: context)
         } catch { lastError = "健康连接设置未保存：\(error.localizedDescription)"; return false }
         await sync(days: 30, into: context)
-        return lastError == nil
+        return marker == accountGeneration && lastError == nil
     }
 
     private var accountGeneration = UUID()
