@@ -17,6 +17,8 @@ with tempfile.TemporaryDirectory(prefix="moveliq-coach-life-") as directory:
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/CoachLifePolicyTests.swift", tests)
     shutil.copy2(root / "AgenticKeepKeep/Core/Agents/CoachAutomationPolicy.swift", source)
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/CoachAutomationPolicyTests.swift", tests)
+    shutil.copy2(root / "AgenticKeepKeep/Core/Plugins/ServiceConnectionFlow.swift", source)
+    shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/ServiceConnectionFlowTests.swift", tests)
     (package / "Package.swift").write_text('''// swift-tools-version: 5.9
 import PackageDescription
 let package = Package(name: "CoachLifeChecks", platforms: [.macOS(.v13)], targets: [

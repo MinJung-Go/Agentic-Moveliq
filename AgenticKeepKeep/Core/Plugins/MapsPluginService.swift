@@ -21,6 +21,16 @@ final class MapsPluginService: NSObject, ObservableObject, CLLocationManagerDele
         finishLocation(.failure(CancellationError()))
     }
     func authorize() { locationManager.requestWhenInUseAuthorization() }
+    var authorizationStatus: CLAuthorizationStatus { locationManager.authorizationStatus }
+    /// Await the decision, without starting location acquisition.
+    func authorizeForConnection() async throws {
+        guard locationManager.authorizationStatus == .notDetermined else { return }
+        try Task.checkCancellation()
+        locationManager.requestWhenInUseAuthorization()
+        while locationManager.authorizationStatus == .notDetermined {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+    }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         locationStatus = [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus) ? "可使用当前位置" : "未授权当前位置，可手填地点"
     }

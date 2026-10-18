@@ -2,6 +2,8 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
+第 35 轮进行中：简化为“选择服务 → 一键连接 → 系统弹窗逐项允许”，折叠详细设置，保留账号和日历范围。[需求](35-service-connection/requirements.md) · [清单](35-service-connection/checklist.md) · [已确认第二版设计稿](35-service-connection/design.html)。首次引导及设置补连已接入原生源码，准备0.5.19（40）原生 CI；最新已发布包仍为下方0.5.18，本轮暂未产出IPA。
+
 当前第 34 轮：适配日常的动态健身教练、系统插件与记录可靠性。围绕“了解日常 → 规划 → 执行 → 动态调整 → 复盘”接入生活偏好、日历、浏览器、地图、闹钟、Apple 音乐及 Siri 入口。[需求](34-agent-system-plugins/requirements.md) · [清单](34-agent-system-plugins/checklist.md) · [已确认设计稿](34-agent-system-plugins/design.html)。已合并 `main` 并打标签 `v0.5.18`，**[0.5.18（39）IPA 已产出并核验](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39058061133/artifacts/12110533955)**；正式构建 565/565 项 iOS XCTest 通过，需侧载重签名，系统能力和真机验收单独记录。
 
 | 轮次 | 主题 | 文档 |

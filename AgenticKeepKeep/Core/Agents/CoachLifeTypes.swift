@@ -24,6 +24,8 @@ enum CoachPlugin: String, Codable, CaseIterable, Identifiable {
 }
 
 struct CoachPluginConfiguration: Codable, Equatable {
+    /// nil preserves legacy HealthKit behavior; explicit selection is account scoped.
+    var healthEnabled: Bool? = nil
     var enabled: Set<CoachPlugin> = [.browser]
     var calendarIDs: [String] = []
     var writeCalendarID: String = ""

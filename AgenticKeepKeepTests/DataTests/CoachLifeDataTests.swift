@@ -15,12 +15,14 @@ final class CoachLifeDataTests: XCTestCase {
     }
     func testLifePreferencesAndPluginSelectionStayInAccountContainer() throws {
         let first = try context(), second = try context(); try configured(first)
-        var plugins = CoachPluginConfiguration(); plugins.enabled.insert(.calendar); plugins.calendarIDs = ["first-account-calendar"]
+        var plugins = CoachPluginConfiguration(); plugins.enabled.insert(.calendar); plugins.calendarIDs = ["first-account-calendar"]; plugins.healthEnabled = true
         try CoachLifeStore.save(plugins: plugins, in: first)
         XCTAssertTrue(try CoachLifeStore.profile(first).confirmed)
         XCTAssertFalse(try CoachLifeStore.profile(second).confirmed)
         XCTAssertFalse(try CoachLifeStore.plugins(second).enabled.contains(.calendar))
         XCTAssertTrue(try CoachLifeStore.plugins(second).calendarIDs.isEmpty)
+        XCTAssertEqual(try CoachLifeStore.plugins(first).healthEnabled, true)
+        XCTAssertNil(try CoachLifeStore.plugins(second).healthEnabled)
     }
     func testBatchProposalsReusePendingOperationButNotCompletedOperation() throws {
         let context = try context(), payload = CoachActionPayload(title: "训练", reason: "明确要求")
