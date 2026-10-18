@@ -62,7 +62,7 @@ final class ServiceConnectionModel: ObservableObject {
     }
     func edit() { guard !busy else { return }; stage = .selection; error = nil }
     func start() {
-        guard loaded, !busy, !selected.isEmpty, let context else { return }
+        guard loaded, !busy, let context else { return }
         do {
             try validate()
             // Rebase only selection onto the latest scope, sync settings and reminders.
@@ -80,7 +80,7 @@ final class ServiceConnectionModel: ObservableObject {
             }, validate: self.validate, waitUntilActive: NativeServiceConnection.waitUntilActive)
             await self.flow.connect(selected: self.selected, client: client)
             do { try self.validate(); self.stage = .result; self.error = self.flow.failure }
-            catch { self.error = error.localizedDescription }
+            catch { self.stage = .result; self.error = error.localizedDescription }
         }
     }
     func pause() {
@@ -108,7 +108,10 @@ final class ServiceConnectionModel: ObservableObject {
             try validate()
             // A new account skipping the guide must not inherit device-wide HealthKit consent.
             if onboarding, config.healthEnabled == nil {
-                update { $0.healthEnabled = false }
+                update { value in
+                    value.healthEnabled = false
+                    if stage == .selection, selected.isEmpty { value.enabled = [] }
+                }
                 guard error == nil else { return false }
             }
             return true

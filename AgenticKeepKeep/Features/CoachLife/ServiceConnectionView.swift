@@ -264,13 +264,13 @@ struct ServiceConnectionView: View {
                 else { model.start() }
             } label: {
                 HStack(spacing: 10) {
-                    Text(model.flow.isRunning ? "暂停后续连接" : model.stage == .result ? "开始使用" : "连接所选服务")
+                    Text(model.flow.isRunning ? "暂停后续连接" : model.stage == .result ? "开始使用" : model.selected.isEmpty && !onboarding ? "保存选择" : "连接所选服务")
                     if !model.flow.isRunning { Image(systemName: "arrow.right").font(.footnote) }
                 }.font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 50)
                     .background(model.flow.isRunning ? Theme.Journal.panel : Theme.accent, in: Capsule())
                     .foregroundStyle(model.flow.isRunning ? Theme.Journal.label : Theme.onAccent)
             }.buttonStyle(.plain)
-                .disabled(!model.loaded || (!model.flow.isRunning && model.busy) || (model.stage == .selection && model.selected.isEmpty))
+                .disabled(!model.loaded || (!model.flow.isRunning && model.busy) || (onboarding && model.stage == .selection && model.selected.isEmpty))
             Text(model.flow.isRunning ? "暂停不会撤回已授予的系统权限。" : model.stage == .result ? "之后仍可在设置中调整连接。" : "系统弹窗需要逐项确认。")
                 .font(.caption2).foregroundStyle(Theme.Journal.secondary).multilineTextAlignment(.center)
         }.padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 14)

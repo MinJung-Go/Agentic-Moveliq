@@ -31,6 +31,7 @@ final class ServiceConnectionFlowTests: XCTestCase {
         XCTAssertTrue(value.syncTrainingAlarms)
         XCTAssertEqual(value.reminderMinutes, 30)
         XCTAssertEqual(ServiceConnectionSelection.applying([], to: value).healthEnabled, false)
+        XCTAssertTrue(ServiceConnectionSelection.applying([], to: value).enabled.isEmpty)
     }
     private final class Stub {
         var access: [ServiceConnectionTarget: ServiceConnectionAccess] = [:]
