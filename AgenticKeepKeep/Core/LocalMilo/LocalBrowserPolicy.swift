@@ -58,7 +58,8 @@ enum LocalBrowserPolicy {
         for (_, url, row) in candidates where result.sources.count < min(10, max(1, count)) {
             guard !result.sources.contains(url) else { continue }
             result.sources.append(url)
-            result.content += "来源 \(result.sources.count)：\(String((row["title"] ?? "网页").prefix(120)))\n\(String((row["text"] ?? "暂无摘要").prefix(500)))\n\(url.absoluteString)\n"
+            result.sourcePreviews.append(.init(url: url, title: String((row["title"] ?? "网页").prefix(80)), summary: String((row["text"] ?? "暂无摘要").prefix(160))))
+            result.content += "来源 \(result.sources.count)：\(String((row["title"] ?? "网页").prefix(80)))\n\(String((row["text"] ?? "暂无摘要").prefix(160)))\n\(url.absoluteString)\n"
         }
         if result.sources.isEmpty { return .init(content: rows.isEmpty ? "没有找到相关网页，未取得来源。" : "搜索返回了结果，但没有可安全读取的公开 HTTPS 来源。", failed: true) }
         return result

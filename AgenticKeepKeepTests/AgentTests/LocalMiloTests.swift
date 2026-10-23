@@ -63,10 +63,13 @@ final class LocalMiloTests: XCTestCase {
         XCTAssertEqual(try LocalPrompt.parse("今天感觉如何？", tools: []).content, "今天感觉如何？")
     }
     func testUnsafeURLsRejected() {
-        for raw in ["file:///etc/passwd", "http://www.bing.com", "https://127.0.0.1", "https://[::1]", "https://localhost", "https://10.0.0.1", "https://bing.com.evil.test", "https://evilbing.com", "https://user:password@bing.com", "https://bing.com:8443", "javascript:alert(1)"] {
+        for raw in ["file:///etc/passwd", "http://www.bing.com", "https://127.0.0.1", "https://[::1]", "https://localhost", "https://10.0.0.1", "https://bing.com.evil.test", "https://user:password@bing.com", "https://bing.com:8443", "javascript:alert(1)"] {
             XCTAssertFalse(URL(string: raw).map(LocalBrowserPolicy.allows) ?? false, raw)
         }
         XCTAssertTrue(LocalBrowserPolicy.allows(URL(string: "https://www.nhs.uk/live-well/")!))
+        // Generic public sites are allowed, but lookalike names get no search/health trust.
+        XCTAssertFalse(LocalBrowserPolicy.isSearchPage(URL(string: "https://evilbing.com/search")!))
+        XCTAssertFalse(LocalBrowserPolicy.isHealthAuthority(URL(string: "https://evilnhs.uk/")!))
     }
     func testTwentyBrowserPolicyCases() {
         let cases: [(String, Bool)] = [
@@ -76,7 +79,7 @@ final class LocalMiloTests: XCTestCase {
             ("https://health.harvard.edu/", true), ("https://www.acefitness.org/", true),
             ("https://acsm.org/", true), ("https://www.bing.com/search?q=sleep", true),
             ("http://www.nhs.uk/", false), ("https://nhs.uk.evil.test/", false),
-            ("https://evilnhs.uk/", false), ("https://nhs.uk:8443/", false),
+            ("https://www.swift.org/", true), ("https://nhs.uk:8443/", false),
             ("https://127.0.0.1/", false), ("https://192.168.1.1/", false),
             ("https://[::1]/", false), ("file:///private/file", false),
             ("https://user@nhs.uk/", false), ("https://localhost/", false)

@@ -179,7 +179,7 @@ struct CoachToolClient: LLMClient {
                                             await tools.onActivity(activity)
                                             throw CancellationError()
                                         }
-                                        let detail = (error as? CoachPluginError)?.localizedDescription ?? "未获取可用结果。"
+                                        let detail = (error as? CoachPluginError)?.localizedDescription ?? (error as? PublicWebError)?.localizedDescription ?? "未获取可用结果。"
                                         result = CoachToolResult(content: "工具未完成：\(detail) 不能视为没有记录或操作已成功。", failed: true)
                                     }
                                     await tools.onActivity(activity)

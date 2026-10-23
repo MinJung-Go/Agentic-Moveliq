@@ -180,12 +180,12 @@ extension Notification.Name { static let personalKnowledgeChanged = Notification
             try CoachLifeStore.checkAccount(context: context, token: token)
             guard call.argumentsJSON.utf8.count <= 16_384,
                   let object = try JSONSerialization.jsonObject(with: Data(call.argumentsJSON.utf8)) as? [String: Any],
-                  Set(object.keys).isSubset(of: ["action", "query", "kind", "include_inactive", "skill_id", "expected_revision", "operation_id", "name", "description", "body", "status", "patches"]) else { throw KnowledgeError.invalid("知识工具参数无效或包含未知字段。") }
+                  Set(object.keys).isSubset(of: ["action", "query", "kind", "include_inactive", "skill_id", "expected_revision", "operation_id", "name", "description", "body", "profile_field", "status", "patches"]) else { throw KnowledgeError.invalid("知识工具参数无效或包含未知字段。") }
             let args = try JSONDecoder().decode(PersonalSkillTool.Arguments.self, from: Data(call.argumentsJSON.utf8))
             let keys: [String: Set<String>] = [
                 "search": ["action", "kind", "query", "include_inactive"],
                 "load": ["action", "kind", "skill_id"],
-                "save": ["action", "kind", "name", "description", "body", "operation_id"],
+                "save": ["action", "kind", "name", "description", "body", "profile_field", "operation_id"],
                 "patch": ["action", "kind", "skill_id", "expected_revision", "operation_id", "patches"],
                 "set_status": ["action", "kind", "skill_id", "expected_revision", "status"],
                 "delete": ["action", "kind", "skill_id", "expected_revision"]

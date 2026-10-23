@@ -128,11 +128,25 @@ struct LocalBrowserView: View {
                             .frame(minHeight: 44)
                     }
                     if let result = browser.result, !result.failed {
-                        Text(result.content).font(.subheadline).foregroundStyle(Theme.Journal.label).textSelection(.enabled)
-                        ForEach(Array(result.sources.enumerated()), id: \.offset) { index, url in
-                            Button { page = .init(url: url) } label: {
-                                HStack { Text("来源 \(index + 1) · \(url.host ?? "网页")").lineLimit(2); Spacer(); Image(systemName: "arrow.up.right") }
-                                    .frame(minHeight: 44)
+                        if result.sourcePreviews.isEmpty {
+                            Text(result.content).font(.subheadline).foregroundStyle(Theme.Journal.label).textSelection(.enabled)
+                            ForEach(result.sources, id: \.self) { url in
+                                Button { page = .init(url: url) } label: { Label(url.host ?? "查看来源", systemImage: "arrow.up.right") }.frame(minHeight: 44)
+                            }
+                        } else {
+                            Text("找到 \(result.sources.count) 个来源 · 摘要").font(.caption).foregroundStyle(Theme.secondaryLabel)
+                            ForEach(Array(result.sourcePreviews.enumerated()), id: \.element.id) { index, source in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Button { page = .init(url: source.url) } label: {
+                                        HStack(alignment: .top) {
+                                            Text(source.title).font(.body.weight(.medium)).multilineTextAlignment(.leading)
+                                            Spacer(minLength: 8); Image(systemName: "arrow.up.right").font(.caption)
+                                        }.frame(minHeight: 44)
+                                    }
+                                    Text("[\(index + 1)] \(source.url.host ?? "网页")").font(.caption).foregroundStyle(Theme.secondaryLabel)
+                                    Text(source.summary).font(.subheadline).foregroundStyle(Theme.Journal.label).textSelection(.enabled)
+                                }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                             }
                         }
                     }

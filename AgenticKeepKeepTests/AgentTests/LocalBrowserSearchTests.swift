@@ -99,4 +99,10 @@ final class LocalBrowserSearchTests: XCTestCase {
         XCTAssertEqual(PublicSearchRelevance.filter(rows, query: "Swift language documentation").map { $0["title"] }, ["Swift language documentation"])
     }
 
+    func testSearchSnippetsKeepExistingBudget() {
+        let rows = (1...30).map { ["url": "https://www.nhs.uk/page/\($0)", "title": String(repeating: "a", count: 1000), "text": String(repeating: "b", count: 1000)] }
+        let result = LocalBrowserPolicy.result(rows, count: 100)
+        XCTAssertEqual(result.sources.count, 10); XCTAssertLessThan(result.content.count, 3500)
+    }
+
 }
