@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="moveliq-personal-knowledge-") as direct
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/PersonalKnowledgeTests.swift", tests)
     (package / "Package.swift").write_text('''// swift-tools-version: 5.9
 import PackageDescription
-let package = Package(name: "PersonalKnowledgeChecks", targets: [
+let package = Package(name: "PersonalKnowledgeChecks", platforms: [.macOS(.v13)], targets: [
     .target(name: "AgenticKeepKeep"),
     .testTarget(name: "AgenticKeepKeepTests", dependencies: ["AgenticKeepKeep"])
 ])
