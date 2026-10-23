@@ -22,15 +22,16 @@ struct CoachTools {
 
     static let search = LLMTool(
         name: "search_public_fitness",
-        description: "按需查公共研究/指南。主题以外的问题不可联网；不接受个人数据。每轮最多一次，回答附来源。",
+        description: "搜索公共资料；禁止个人资料、病历、完整对话。健康查询用health优先权威来源。每轮一次，附来源；摘要非正文。",
         parameters: JSONSchema.object(properties: [
-            "topic": JSONSchema.string(description: "公共主题", enumValues: FitnessSearchTopic.allCases.map(\.rawValue)),
+            "query": JSONSchema.string(description: "公共搜索关键词，最多160字，不含个人资料"),
+            "purpose": JSONSchema.string(description: "查询用途", enumValues: ["general", "health"]),
             "count": .object([
                 "type": .string("integer"),
-                "description": .string("结果条数，默认10；仅在需要广泛比较资料时增加，最多50"),
-                "minimum": .integer(1), "maximum": .integer(50)
+                "description": .string("结果条数，默认10，最多10"),
+                "minimum": .integer(1), "maximum": .integer(10)
             ])
-        ], required: ["topic"]))
+        ], required: ["query"]))
 
     static let reader = LLMTool(
         name: "read_public_webpage",

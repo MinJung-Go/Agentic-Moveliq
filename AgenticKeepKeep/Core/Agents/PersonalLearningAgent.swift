@@ -46,6 +46,7 @@ struct PersonalLearningAgent {
     var outputLimit = 2400
     static let memoryCapabilities = """
     用 skill 工具维护本机知识：kind=profile 是姓名、称呼和稳定偏好，kind=memory 是长期决定与经验，kind=skill 是可复用方法。明确的用户自述可直接提案，不必等用户说“记住”；临时状态、猜测、仅助手提出的事实不保存。
+    profile 新建指定 profile_field：name姓名、nickname称呼、timezone时区、background稳定背景、preferences稳定偏好。只保存用户明确提供的内容；未知留空，不把临时事件或条件方法混入画像。
     新建先 search，已有条目先 load 当前版本再 patch；姓名不是技能，不要求创建训练记录。训练设置沿用现有专门入口，不复制或改变授权。成功回执返回 ID/版本后才说已记住；失败或冲突如实说明，含糊时询问。后台整理仅补充遗漏，不代替本次保存回执。可在设置「Milo 的记忆」纠正。
     """
     static let extractionInstructions = """
@@ -54,7 +55,8 @@ struct PersonalLearningAgent {
     仅AI提出的方法可作为候选；临时心情、单次训练安排、不确定推测不要保存成长期事实。
     不提取密码、密钥、登录令牌、身份证、联系方式或第三方私密信息。
     用户明确要求保存要优先处理；有歧义不要猜。资料中现有训练设置有唯一入口，不复制其中的目标、器械、时段、频次等字段。
-    每项 {action:"save"|"patch"|"evidence",kind:"skill"|"profile"|"memory",content:{name,description,body},source_ids:[来源UUID]}。
+    每项 {action:"save"|"patch"|"evidence",kind:"skill"|"profile"|"memory",content:{name,description,body,profileField},source_ids:[来源UUID]}。
+    profile 的 profileField 用 name/nickname/timezone/background/preferences；每项只对应一个字段，已有字段先patch。
     Skill正文含 ## 适用、## 步骤、## 注意；描述简短，正文<=1200汉字。未验证的效果不要表述为有效。
     先检查给出的已有内容（可能已由当前对话工具保存），重复资料、记忆或方法用evidence关联skill_id，不重复新建或重复通知。
     明确纠正用patch：skill_id、expected_revision、source_ids、patches:[{field:"name"|"description"|"body",old_string,new_string}]。
@@ -107,6 +109,7 @@ enum PersonalSkillTool {
         parameters: JSONSchema.object(properties: [
             "action": JSONSchema.string(description: "操作", enumValues: ["search", "load", "save", "patch", "set_status", "delete"]),
             "query": JSONSchema.string(description: "搜索词"),
+            "profile_field": JSONSchema.string(description: "仅profile新建：稳定字段；内容只包含该字段的值", enumValues: PersonalProfileField.allCases.map(\.rawValue)),
             "kind": JSONSchema.string(description: "内容类别：profile资料、memory长期记忆、skill方法；默认skill，维护时明确指定", enumValues: ["skill", "profile", "memory"]),
             "include_inactive": .object(["type": .string("boolean"), "description": .string("仅用户要求管理时搜索停用/归档项，默认false")]),
             "skill_id": JSONSchema.string(description: "条目UUID（各类别共用skill_id）"),
@@ -135,7 +138,7 @@ enum PersonalSkillTool {
         var content: KnowledgeContent?
         if args.action == "save" {
             guard let name = args.name, let description = args.description, let body = args.body else { throw KnowledgeError.invalid("缺少名称、说明或正文。") }
-            content = .init(name: name, description: description, body: body)
+            content = .init(name: name, description: description, body: body, profileField: args.profileField)
             try KnowledgeRules.validate(content!, kind: kind)
         }
         if args.action == "patch" {
@@ -169,10 +172,12 @@ enum PersonalSkillTool {
         var name: String?
         var description: String?
         var body: String?
+        var profileField: PersonalProfileField?
         var status: KnowledgeStatus?
         var patches: [KnowledgePatch]?
         enum CodingKeys: String, CodingKey {
             case action, query, kind, name, description, body, status, patches
+            case profileField = "profile_field"
             case skillID = "skill_id", expected = "expected_revision", operationID = "operation_id", includeInactive = "include_inactive"
         }
     }

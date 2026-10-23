@@ -221,6 +221,7 @@ struct RecordsView: View {
 
     private var recordList: some View {
         List {
+            Group {
             ForEach(groups) { group in
                 Section {
                     ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
@@ -231,7 +232,9 @@ struct RecordsView: View {
                 }
                 .listSectionSeparator(.hidden)
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)

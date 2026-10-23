@@ -58,7 +58,7 @@ struct CoachChatView: View {
                     GeometryReader { geometry in
                         ScrollView {
                             intro
-                                .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 32), alignment: .bottomLeading)
+                                .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 32), alignment: .center)
                                 .padding(.vertical, Theme.Spacing.l)
                         }
                     }
@@ -102,7 +102,7 @@ struct CoachChatView: View {
                 Text(profileText.isEmpty ? "按需查询本机记录的聚合数据，未默认加载全部历史。" : profileText)
             }
             .task {
-                do { conversationID = try PersonalKnowledgeStore.prepareConversation(context) }
+                do { conversationID = try PersonalKnowledgeStore.prepareConversation(context); inputText = PersonalKnowledgeStore.draft(conversationID, context: context) }
                 catch { errorText = error.localizedDescription; return }
                 loadProfile()
                 if !consumedInitialMessage {
@@ -123,10 +123,13 @@ struct CoachChatView: View {
             })
             .sheet(isPresented: $showsConversations) {
                 NavigationStack { ChatConversationsView(activeID: conversationID) { id in
-                    _ = memoryStore.begin(); conversationID = id; errorText = nil; toolActivities = []; inputText = ""
+                    switchConversation(id)
                 } }
             }
-            .sheet(isPresented: $browser.isPresented) { LocalBrowserView(browser: browser) }
+            .sheet(isPresented: $browser.isPresented, onDismiss: { browser.presentationDidDismiss() }) { LocalBrowserView(browser: browser) }
+            .onChange(of: inputText) { _, text in
+                if let conversationID { do { try PersonalKnowledgeStore.saveDraft(text, conversation: conversationID, context: context) } catch { errorText = error.localizedDescription } }
+            }
             .onDisappear {
                 dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel()
                 isSending = false; isPreparingContext = false; streamingText = ""; streamingReasoning = ""
@@ -144,39 +147,25 @@ struct CoachChatView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        MiloAvatar(size: 36)
-                        Text(displayName).font(.headline)
-                    }
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.secondaryLabel)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("关闭 \(displayName)")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { PersonalKnowledgeView() } label: {
-                        Image(systemName: "book.closed").frame(width: 44, height: 44)
-                    }.accessibilityLabel("Milo 的记忆")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("切换或新建对话", systemImage: "bubble.left.and.bubble.right") { showsConversations = true }.disabled(isSending || showsRealtime)
-                        if let pending = pendingPlan {
-                            Button("不采用这份计划") { reject(message: pending) }
-                        }
+                        Button("切换对话", systemImage: "bubble.left.and.bubble.right") { showsConversations = true }.disabled(isSending || showsRealtime)
+                        NavigationLink { PersonalKnowledgeView() } label: { Label("Milo 的记忆", systemImage: "book.closed") }
+                        if let pending = pendingPlan { Button("不采用这份计划") { reject(message: pending) } }
                         Button("数据使用说明", systemImage: "chart.bar.doc.horizontal") { showsDataUsage = true }
-                        Button("清空当前对话", role: .destructive) { confirmsClearHistory = true }.disabled(isSending)
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .foregroundStyle(Theme.secondaryLabel)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("更多对话操作")
+                        Button("清空当前对话", role: .destructive) { confirmsClearHistory = true }.disabled(isSending || showsRealtime)
+                        Button("关闭聊天") { dismiss() }
+                    } label: { HStack(spacing: 4) { Text(displayName).font(.headline); Image(systemName: "chevron.down").font(.caption2) }.foregroundStyle(Theme.Journal.label) }
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dictation.finish(); isInputFocused = false; showsConversations = true } label: {
+                        Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                    }.accessibilityLabel("切换对话").disabled(isSending || showsRealtime)
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button { newConversation() } label: { Image(systemName: "square.and.pencil").frame(width: 44, height: 44) }
+                        .accessibilityLabel("新建对话").disabled(isSending || showsRealtime)
+                    Button { openRealtime() } label: { Image(systemName: "phone").frame(width: 44, height: 44) }
+                        .accessibilityLabel("实时语音或视频通话").disabled(isSending || showsRealtime)
                 }
             }
         }
@@ -231,52 +220,30 @@ struct CoachChatView: View {
 
     // MARK: - 空态
 
-    /// 空态给的是**能直接点的示例**，不是一句「暂无对话」（FR15.6）
-    private static let exampleQuestions = [
-        "今天适合练什么？",
-        "帮我调整本周课程表",
-        "看看我最近的恢复情况",
-    ]
-
     private var intro: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            MiloAvatar(size: 64)
-            Text("今天，从哪里开始？")
-                .font(Theme.Font.largeTitle)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 16) {
+            MiloAvatar(size: 88)
+            Text("聊点新话题").font(.title3.weight(.medium)).foregroundStyle(Theme.Journal.label)
+            Text("从你现在想到的开始。").font(.subheadline).foregroundStyle(Theme.secondaryLabel)
+            if let errorText { Text(errorText).font(.footnote).foregroundStyle(Theme.danger) }
+        }.frame(maxWidth: .infinity).padding(24)
+    }
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                ForEach(Self.exampleQuestions, id: \.self) { question in
-                    Button {
-                        inputText = question
-                        Haptics.tap()
-                    } label: {
-                        Text(question)
-                            .font(Theme.Font.body)
-                            .foregroundStyle(.primary)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, Theme.Spacing.l)
-                            .padding(.vertical, Theme.Spacing.m)
-                            .background(Theme.cardNested, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("填入输入框，确认后发送")
-                }
-            }
-            if let errorText {
-                Text(errorText)
-                    .font(Theme.Font.footnote)
-                    .foregroundStyle(Theme.danger)
-            } else if !settings.isConfigured {
-                Text(settings.useLocalModel ? "请先在「设置 → 离线模式」完成模型下载" : "请确认已登录；服务不可用时请联系管理员")
-                    .font(Theme.Font.footnote)
-                    .foregroundStyle(Theme.secondaryLabel)
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.xl)
-        .padding(.bottom, Theme.Spacing.l)
+    private func switchConversation(_ id: UUID) {
+        guard !isSending, !showsRealtime else { return }
+        dictation.finish(); isInputFocused = false
+        do { if let conversationID, conversationID != id { try PersonalKnowledgeStore.saveDraft(inputText, conversation: conversationID, context: context) } }
+        catch { errorText = error.localizedDescription; return }
+        _ = memoryStore.begin(); conversationID = id; errorText = nil; toolActivities = []
+        inputText = PersonalKnowledgeStore.draft(id, context: context)
+    }
+    private func newConversation() {
+        guard !isSending, !showsRealtime else { return }
+        dictation.finish()
+        do {
+            if let conversationID { try PersonalKnowledgeStore.saveDraft(inputText, conversation: conversationID, context: context) }
+            switchConversation(try PersonalKnowledgeStore.newConversation(context))
+        } catch { errorText = error.localizedDescription }
     }
 
     // MARK: - 对话
@@ -543,12 +510,17 @@ struct CoachChatView: View {
                     return try await browser.read(searchSources[args.sourceIndex - 1])
                 }
                 guard settings.webSearchEnabled, try CoachLifeStore.plugins(context).enabled.contains(.browser),
-                      let args = CoachAgent.decodeArguments(FitnessSearchArguments.self, from: call) else {
-                    return CoachToolResult(content: "联网搜索未启用，或公共主题不受支持。没有执行搜索。", failed: true)
+                      let args = CoachAgent.decodeArguments(PublicSearchArguments.self, from: call) else {
+                    return CoachToolResult(content: "联网搜索未启用，或查询参数无效。没有执行搜索。", failed: true)
                 }
                 let count = args.count ?? GLMWebSearch.defaultResultCount
                 let result: CoachToolResult
-                result = try await browser.search(topic: args.topic, count: count)
+                let query = try args.validatedQuery()
+                let personalNames = try PersonalKnowledgeStore.load(context).items.filter {
+                    $0.kind == .profile && ($0.content.profileField == .name || $0.content.profileField == .nickname)
+                }.map { $0.content.body.trimmingCharacters(in: .whitespacesAndNewlines) }
+                guard !personalNames.contains(where: { $0.count >= 2 && query.localizedCaseInsensitiveContains($0) }) else { throw PublicWebError.privateQuery }
+                result = try await browser.search(query: query, count: count, health: args.health)
                 searchSources = result.sources
                 return result
             }

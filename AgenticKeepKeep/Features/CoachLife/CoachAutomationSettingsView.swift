@@ -70,7 +70,10 @@ struct CoachAutomationSettingsView: View {
             if !keepEditorChanges { rules = editorBaseline }
         }) { editor in
             NavigationStack {
-                Form { editorContents(editor) }
+                Form {
+            Group { editorContents(editor)
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
                     .navigationTitle(editor.title).navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("取消") { editing = nil } }

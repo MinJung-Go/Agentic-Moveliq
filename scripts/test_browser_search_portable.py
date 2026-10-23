@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix="moveliq-browser-search-") as directory:
     source.mkdir(parents=True)
     tests.mkdir(parents=True)
     for relative in ["Core/LLM/FitnessSearchTopic.swift", "Core/Agents/CoachToolResult.swift",
-                     "Core/LocalMilo/LocalBrowserPolicy.swift"]:
+                     "Core/LocalMilo/LocalBrowserPolicy.swift", "Core/LLM/PublicWebSearch.swift"]:
         shutil.copy2(root / "AgenticKeepKeep" / relative, source)
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/LocalBrowserSearchTests.swift", tests)
     (package / "Package.swift").write_text('''// swift-tools-version: 5.9

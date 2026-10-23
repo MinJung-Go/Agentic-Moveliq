@@ -2,7 +2,7 @@ import Foundation
 
 // Pure values: neither model output nor imported text grants business-tool permissions.
 enum KnowledgeKind: String, Codable, CaseIterable { case skill, profile, memory
-    var title: String { switch self { case .skill: return "技能"; case .profile: return "关于你"; case .memory: return "记忆" } }
+    var title: String { switch self { case .skill: return "技能"; case .profile: return "资料"; case .memory: return "记忆" } }
 }
 enum KnowledgeStatus: String, Codable { case active, disabled, archived }
 enum KnowledgeEvidenceKind: String, Codable {
@@ -38,6 +38,51 @@ struct KnowledgeContent: Codable, Equatable {
     var name: String
     var description: String
     var body: String
+    var profileField: PersonalProfileField? = nil
+}
+/// Stable field contract shared by tools, management, context and USER.md export.
+enum PersonalProfileField: String, Codable, CaseIterable, Identifiable {
+    case name, nickname, timezone, background, preferences
+    var id: String { rawValue }
+    var title: String {
+        switch self { case .name: return "姓名"; case .nickname: return "称呼"; case .timezone: return "时区"; case .background: return "关于我"; case .preferences: return "我的偏好" }
+    }
+    static func legacy(_ name: String) -> Self? {
+        switch name.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "姓名", "name": return .name
+        case "称呼", "昵称", "nickname": return .nickname
+        case "时区", "timezone": return .timezone
+        case "背景", "关于我", "background": return .background
+        case "偏好", "我的偏好", "回答偏好", "表达偏好", "沟通偏好", "preferences": return .preferences
+        default: return nil
+        }
+    }
+    /// Only unambiguous exact legacy labels migrate; bodies, IDs and history stay untouched.
+    static func migrating(_ original: KnowledgeState) -> KnowledgeState {
+        var state = original
+        for field in allCases {
+            let matches = state.items.indices.filter {
+                let item = state.items[$0]
+                return item.kind == .profile && !item.candidate &&
+                    (item.content.profileField == field || (item.content.profileField == nil && legacy(item.content.name) == field))
+            }
+            if matches.count == 1, let index = matches.first,
+               field != .timezone || TimeZone(identifier: state.items[index].content.body.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+                state.items[index].content.profileField = field
+            }
+        }
+        return state
+    }
+    static func markdown(_ items: [KnowledgeItem]) -> String {
+        var sections: [String] = []
+        for field in allCases {
+            let matches = items.filter { $0.content.profileField == field }
+            if !matches.isEmpty { sections.append("## " + field.title + "\n" + matches.map { $0.content.body }.joined(separator: "\n\n")) }
+        }
+        let others = items.filter { $0.content.profileField == nil }
+        if !others.isEmpty { sections.append("## 其他已保存资料\n" + others.map { "### " + $0.content.name + "\n" + $0.content.body }.joined(separator: "\n\n")) }
+        return sections.joined(separator: "\n\n")
+    }
 }
 struct KnowledgePatch: Codable, Equatable {
     enum Field: String, Codable { case name, description, body }
@@ -133,6 +178,12 @@ enum KnowledgeRules {
               !content.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               content.body.utf8.count <= maxBodyBytes else {
             throw KnowledgeError.invalid("名称、简介和正文不能为空；名称最多 80 字，简介最多 240 字，正文最多 6 KB。")
+        }
+        if let field = content.profileField {
+            guard kind == .profile else { throw KnowledgeError.invalid("仅个人资料可指定画像字段。") }
+            if field == .timezone, TimeZone(identifier: content.body.trimmingCharacters(in: .whitespacesAndNewlines)) == nil {
+                throw KnowledgeError.invalid("时区应使用有效标识，例如 Asia/Shanghai。")
+            }
         }
         let text = content.name + "\n" + content.description + "\n" + content.body
         let credentialPattern = #"(?i)(sk-[a-z0-9_-]{16,}|(?:password|passwd|api[_ -]?key|access[_ -]?token|密码|密钥)\s*[:=：]\s*\S{6,})"#
@@ -272,10 +323,17 @@ extension KnowledgeState {
     }
 
     mutating func save(kind: KnowledgeKind, content: KnowledgeContent, evidence: [KnowledgeEvidence], expiresAt: Date? = nil) throws -> UUID {
+        var content = content
+        if kind == .profile, content.profileField == nil { content.profileField = PersonalProfileField.legacy(content.name) }
         try KnowledgeRules.validate(content, kind: kind)
         guard !evidence.isEmpty else { throw KnowledgeError.invalid("保存需要可核验的来源。") }
         let hasFreshExplicit = evidence.contains { $0.kind == .explicitRequest && !suppressedSources.contains($0.id) }
         guard hasFreshExplicit || evidence.contains(where: { !suppressedSources.contains($0.id) }) else { throw KnowledgeError.suppressed }
+        if let field = content.profileField,
+           let existing = items.first(where: { $0.kind == .profile && ($0.content.profileField ?? PersonalProfileField.legacy($0.content.name)) == field }) {
+            if existing.content.body == content.body { try addEvidence(evidence, to: existing.id); return existing.id }
+            throw KnowledgeError.duplicate(existing.id)
+        }
         if let same = items.first(where: { $0.kind == kind && $0.content == content }) {
             try addEvidence(evidence, to: same.id); return same.id
         }
@@ -379,10 +437,10 @@ struct KnowledgeArchive: Codable {
     var memoryMarkdown: String
     init(state: KnowledgeState, account: String) {
         self.account = account
-        items = state.items.filter { !$0.candidate }
+        items = PersonalProfileField.migrating(state).items.filter { !$0.candidate }
         // Source IDs are opaque, but no source contents/conversation links travel to another device.
         for i in items.indices { for j in items[i].evidence.indices { items[i].evidence[j].sourceDeleted = true } }
-        userMarkdown = Self.markdown(items.filter { $0.kind == .profile })
+        userMarkdown = PersonalProfileField.markdown(items.filter { $0.kind == .profile })
         memoryMarkdown = Self.markdown(items.filter { $0.kind == .memory })
     }
     static func markdown(_ items: [KnowledgeItem]) -> String { items.map { "## \($0.content.name)\n\($0.content.body)" }.joined(separator: "\n\n") }

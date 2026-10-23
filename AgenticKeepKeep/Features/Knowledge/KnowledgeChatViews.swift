@@ -51,31 +51,79 @@ struct ChatConversationsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\ChatConversation.updatedAt, order: .reverse)]) private var conversations: [ChatConversation]
+    @Query(sort: [SortDescriptor(\ChatMessage.date, order: .reverse)]) private var messages: [ChatMessage]
+    @State private var query = ""
     @State private var deletion: UUID?
     @State private var error: String?
+    private let groups = ["今天", "昨天", "过去 7 天", "更早"]
+    private func group(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return groups[0] }
+        if calendar.isDateInYesterday(date) { return groups[1] }
+        if date >= calendar.date(byAdding: .day, value: -7, to: calendar.startOfDay(for: Date()))! { return groups[2] }
+        return groups[3]
+    }
+    private func preview(_ conversation: ChatConversation) -> String {
+        if !conversation.draft.isEmpty { return "草稿 · " + conversation.draft }
+        return messages.first(where: { $0.conversationID == conversation.uuid && !$0.content.isEmpty })?.content ?? "还没有发送消息"
+    }
+    private var matching: [ChatConversation] {
+        conversations.filter { query.isEmpty || ($0.title + preview($0)).localizedCaseInsensitiveContains(query) }
+    }
     var body: some View {
         List {
-            Section {
-                Button { action { onSelect(try PersonalKnowledgeStore.newConversation(context)); dismiss() } } label: { Label("新的对话", systemImage: "square.and.pencil") }
-            } footer: { Text("换个话题，仍是了解你的 Milo。个人资料、记忆和技能在会话间共享。") }
-            ForEach(conversations) { conversation in
-                Button {
-                    action { try PersonalKnowledgeStore.selectConversation(conversation.uuid, context: context); onSelect(conversation.uuid); dismiss() }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(conversation.title).foregroundStyle(.primary)
-                            Text(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if conversation.uuid == activeID { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
-                    }.padding(.vertical, 6)
-                }.swipeActions { Button("删除", role: .destructive) { deletion = conversation.uuid } }
+            Group {
+            if matching.isEmpty {
+                ContentUnavailableView(query.isEmpty ? "从一句话开始" : "没有找到这段对话", systemImage: "bubble.left",
+                    description: Text(query.isEmpty ? "点右上角，和 Milo 聊点新话题。" : "试试其他关键词。"))
+                    .listRowSeparator(.hidden).listRowBackground(Theme.canvas)
             }
-            if let error { Section { Text(error).foregroundStyle(.red) } }
-        }
+            ForEach(groups, id: \.self) { label in
+                let rows = matching.filter { group($0.updatedAt) == label }
+                if !rows.isEmpty {
+                    Section(label) {
+                        ForEach(rows) { conversation in
+                            Button { action { try PersonalKnowledgeStore.selectConversation(conversation.uuid, context: context); onSelect(conversation.uuid); dismiss() } } label: {
+                                VStack(alignment: .leading, spacing: 7) {
+                                    HStack(alignment: .firstTextBaseline) {
+                                        if conversation.uuid == activeID { Image(systemName: "checkmark").font(.caption).accessibilityLabel("当前会话") }
+                                        Text(conversation.title.isEmpty ? "新的对话" : conversation.title).font(.body.weight(.medium)).lineLimit(1)
+                                        Spacer(minLength: 12)
+                                        Text(conversation.updatedAt.formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(Theme.secondaryLabel)
+                                    }
+                                    Text(preview(conversation)).font(.subheadline).foregroundStyle(Theme.secondaryLabel).lineLimit(1)
+                                }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(conversation.uuid == activeID ? Theme.cardNested : Theme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain).foregroundStyle(Theme.Journal.label)
+                                .listRowInsets(EdgeInsets(top: 2, leading: 20, bottom: 2, trailing: 20))
+                                .listRowBackground(Theme.canvas).listRowSeparator(.hidden)
+                                .swipeActions { Button("删除", role: .destructive) { deletion = conversation.uuid } }
+                        }
+                    }.textCase(nil)
+                }
+            }
+            if let error { Text(error).foregroundStyle(Theme.danger).listRowBackground(Theme.canvas) }
+
+            }.listRowBackground(Theme.canvas)
+        }.themedListSurface()
+        .listStyle(.plain).scrollContentBackground(.hidden).background(Theme.canvas)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "搜索对话")
         .navigationTitle("对话").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
+        .toolbarBackground(Theme.canvas, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) {
+            NavigationLink { PersonalKnowledgeView() } label: {
+                HStack { Text("Milo 的记忆"); Spacer(); Image(systemName: "chevron.right") }
+                    .font(.subheadline).foregroundStyle(Theme.secondaryLabel).padding(.horizontal, 24).frame(minHeight: 52)
+            }.background(Theme.canvas)
+        }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { action { onSelect(try PersonalKnowledgeStore.newConversation(context)); dismiss() } } label: {
+                    Image(systemName: "square.and.pencil").frame(width: 44, height: 44)
+                }.accessibilityLabel("新建对话")
+            }
+        }
         .confirmationDialog("删除这个会话？", isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }), titleVisibility: .visible) {
             Button("删除会话", role: .destructive) {
                 guard let id = deletion else { return }
@@ -85,7 +133,7 @@ struct ChatConversationsView: View {
                 }
                 deletion = nil
             }
-        } message: { Text("只删除对话。已保存的资料、记忆、技能以及课程表和记录会保留；可以到「Milo 的记忆」单独管理。") }
+        } message: { Text("只删除对话。已保存的资料、记忆、技能以及课程表和记录会保留。") }
     }
     private func action(_ work: () throws -> Void) { do { try work() } catch { self.error = error.localizedDescription } }
 }

@@ -16,6 +16,7 @@ struct CoachMusicView: View {
     @Query(sort: [SortDescriptor(\CoachActionRecord.date, order: .reverse)]) private var actions: [CoachActionRecord]
     var body: some View {
         List {
+            Group {
             Section {
                 Text(music.currentTitle).font(.headline)
                 HStack {
@@ -39,7 +40,9 @@ struct CoachMusicView: View {
             }
             ForEach(actions.filter { $0.kind == "music" && ["pending", "partial", "executing"].contains($0.state) }.prefix(3), id: \.uuid) { CoachPluginActionCard(action: $0) }
             if let error { Text(error).foregroundStyle(Theme.danger).font(.footnote) }
-        }.navigationTitle("Apple 音乐").task { token = ServiceCredentials.session?.token }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface().navigationTitle("Apple 音乐").task { token = ServiceCredentials.session?.token }
         .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in music.refreshPlayback() }
     }
     private func require() throws { try CoachLifeStore.require(.music, context: context, token: token) }
@@ -57,6 +60,7 @@ struct CoachMusicView: View {
 struct CoachSiriSettingsView: View {
     var body: some View {
         List {
+            Group {
             Section { Text("用一句话打开 Moveliq。系统可能要求先解锁；记录仍需在 App 内确认保存。") }
             Section("可以这样说") {
                 Label("用 Moveliq 打开 Milo", systemImage: "bubble.left")
@@ -64,6 +68,8 @@ struct CoachSiriSettingsView: View {
                 Label("用 Moveliq 记一笔", systemImage: "square.and.pencil")
             }
             Link("打开快捷指令", destination: URL(string: "shortcuts://")!)
-        }.navigationTitle("Siri 与快捷指令")
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface().navigationTitle("Siri 与快捷指令")
     }
 }

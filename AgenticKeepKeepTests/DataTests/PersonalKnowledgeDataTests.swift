@@ -143,4 +143,43 @@ import SwiftData
         XCTAssertEqual(try PersonalKnowledgeStore.sources(context, conversation: id)[0].text, original)
     }
 
+    func testConversationDraftSurvivesSwitchAndNewContext() async throws {
+        try await withKnowledgeAccount { context, _ in
+            let first = try PersonalKnowledgeStore.newConversation(context)
+            XCTAssertEqual(try PersonalKnowledgeStore.newConversation(context), first)
+            try PersonalKnowledgeStore.saveDraft("尚未发送的文字", conversation: first, context: context)
+            let second = try PersonalKnowledgeStore.newConversation(context)
+            XCTAssertNotEqual(first, second)
+            try PersonalKnowledgeStore.selectConversation(first, context: context)
+            XCTAssertEqual(PersonalKnowledgeStore.draft(first, context: ModelContext(context.container)), "尚未发送的文字")
+            XCTAssertEqual(PersonalKnowledgeStore.draft(second, context: context), "")
+            XCTAssertEqual(try PersonalKnowledgeStore.load(context).activeConversationID, first)
+        }
+    }
+    func testDeletingCurrentDraftFallsBackWithoutDeletingOtherDraft() async throws {
+        try await withKnowledgeAccount { context, _ in
+            let first = try PersonalKnowledgeStore.newConversation(context)
+            try PersonalKnowledgeStore.saveDraft("保留", conversation: first, context: context)
+            let second = try PersonalKnowledgeStore.newConversation(context)
+            try PersonalKnowledgeStore.deleteConversation(second, context: context)
+            XCTAssertEqual(try PersonalKnowledgeStore.prepareConversation(context), first)
+            XCTAssertEqual(PersonalKnowledgeStore.draft(first, context: context), "保留")
+            XCTAssertEqual(try PersonalKnowledgeStore.conversations(context).count, 1)
+        }
+    }
+    func testProfileFieldToolReceiptProjectionAndFreshContextAgree() async throws {
+        try await withKnowledgeAccount { context, token in
+            let message = ChatMessage(role: .user, content: "叫我小林")
+            message.conversationID = UUID(); context.insert(message); try context.save()
+            let sources = try PersonalKnowledgeStore.sources(context, conversation: message.conversationID!)
+            let client = ReviewClient(source: try XCTUnwrap(sources.first))
+            let result = try await PersonalSkillSession().execute(toolCall(["action": "save", "kind": "profile", "profile_field": "nickname", "name": "称呼", "description": "用户自述", "body": "小林"]), sources: sources, context: context, token: token, client: client)
+            XCTAssertFalse(result.failed, result.content)
+            let state = try PersonalKnowledgeStore.load(ModelContext(context.container))
+            XCTAssertEqual(state.items.first?.content.profileField, .nickname)
+            XCTAssertTrue(try PersonalKnowledgeStore.personalContext(context, query: "我的称呼").contains("小林"))
+            XCTAssertTrue(KnowledgeArchive(state: state, account: "local").userMarkdown.contains("小林"))
+        }
+    }
+
 }

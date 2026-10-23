@@ -8,6 +8,7 @@ struct MiloSettingsView: View {
 
     var body: some View {
         Form {
+            Group {
             Section("怎么称呼我") {
                 TextField("Milo", text: $name).focused($editing)
                     .onChange(of: name) { _, value in name = String(value.prefix(30)) }
@@ -34,7 +35,9 @@ struct MiloSettingsView: View {
             } header: { Text("我希望你……") } footer: {
                 Text("可不填写。切换从下一次回复开始生效，历史对话、目标和记录都会保留。")
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("Milo · 相处方式")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)

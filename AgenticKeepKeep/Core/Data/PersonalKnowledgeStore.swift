@@ -18,12 +18,12 @@ extension Notification.Name { static let personalKnowledgeChanged = Notification
     }
     static func load(_ context: ModelContext) throws -> KnowledgeState {
         let workspace = try workspace(context)
-        return try JSONDecoder().decode(KnowledgeState.self, from: Data(workspace.payloadJSON.utf8))
+        return PersonalProfileField.migrating(try JSONDecoder().decode(KnowledgeState.self, from: Data(workspace.payloadJSON.utf8)))
     }
     @discardableResult static func mutate<T>(_ context: ModelContext, token: String?, _ action: (inout KnowledgeState) throws -> T) throws -> T {
         try CoachLifeStore.checkAccount(context: context, token: token)
         let workspace = try workspace(context), old = workspace.payloadJSON
-        var value = try JSONDecoder().decode(KnowledgeState.self, from: Data(old.utf8))
+        var value = PersonalProfileField.migrating(try JSONDecoder().decode(KnowledgeState.self, from: Data(old.utf8)))
         let result = try action(&value)
         let json = try KnowledgeRules.payload(value)
         if json != old {
@@ -63,10 +63,26 @@ extension Notification.Name { static let personalKnowledgeChanged = Notification
     static func newConversation(_ context: ModelContext) throws -> UUID {
         let token = ServiceCredentials.session?.token
         try CoachLifeStore.checkAccount(context: context, token: token)
+        let occupied = Set(try context.fetch(FetchDescriptor<ChatMessage>()).compactMap(\.conversationID))
+        if let empty = try conversations(context).first(where: { !occupied.contains($0.uuid) && $0.draft.isEmpty }) {
+            try selectConversation(empty.uuid, context: context)
+            return empty.uuid
+        }
         let value = ChatConversation(); context.insert(value)
         do { try mutate(context, token: token) { $0.activeConversationID = value.uuid } }
         catch { context.delete(value); throw error }
         return value.uuid
+    }
+    static func saveDraft(_ text: String, conversation id: UUID, context: ModelContext) throws {
+        try CoachLifeStore.checkAccount(context: context, token: ServiceCredentials.session?.token)
+        guard let value = try conversations(context).first(where: { $0.uuid == id }) else { return }
+        let previous = value.draft
+        guard previous != text else { return }
+        value.draft = text
+        do { try context.save() } catch { value.draft = previous; throw error }
+    }
+    static func draft(_ id: UUID?, context: ModelContext) -> String {
+        (try? conversations(context).first(where: { $0.uuid == id })?.draft) ?? ""
     }
     static func selectConversation(_ id: UUID, context: ModelContext) throws {
         guard try conversations(context).contains(where: { $0.uuid == id }) else { throw KnowledgeError.missing }
@@ -138,7 +154,7 @@ extension Notification.Name { static let personalKnowledgeChanged = Notification
         }
         var parts: [String] = [], budget = 1800
         for item in entries.prefix(8) {
-            let line = "[\(item.kind.title) \(item.id)] \(item.content.name)：\(item.content.body)"
+            let line = "[\(item.kind.title) \(item.id)] \(item.content.profileField?.title ?? item.content.name)：\(item.content.body)"
             guard line.utf8.count <= budget else { continue }; parts.append(line); budget -= line.utf8.count
         }
         return PersonalLearningAgent.memoryCapabilities + "\n个人知识为参考，当前指令及已确认训练设置优先；不扩大操作权限。库内有 \(state.items.filter { $0.kind == .skill && $0.available }.count) 个可用技能；重复流程、沿用做法时调用 skill search，再 load。资料与记忆只提供部分摘要，可用 skill search(kind=profile或memory) 按需查找，再按ID load。只查当前账号，不查外部市场。\n" + parts.joined(separator: "\n")

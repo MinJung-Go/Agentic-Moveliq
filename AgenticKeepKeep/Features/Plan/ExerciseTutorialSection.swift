@@ -49,6 +49,7 @@ struct ExerciseTutorialSection: View {
         .sheet(isPresented: $showsAlternatives) {
             NavigationStack {
                 List {
+            Group {
                     ForEach(videos) { video in
                         VStack(alignment: .leading, spacing: 10) {
                             Text(video.title).font(.headline)
@@ -71,7 +72,9 @@ struct ExerciseTutorialSection: View {
                     if enabled {
                         Button(loading ? "正在查找…" : "重新查找") { search() }.disabled(loading)
                     }
-                }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
                 .navigationTitle("教学视频")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showsAlternatives = false } } }

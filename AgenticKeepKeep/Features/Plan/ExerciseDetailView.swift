@@ -10,6 +10,7 @@ struct ExerciseDetailView: View {
 
     var body: some View {
         List {
+            Group {
             Section {
                 Text(name.isEmpty ? "未命名动作" : name)
                     .font(Theme.Font.title)
@@ -23,7 +24,9 @@ struct ExerciseDetailView: View {
                 }
             }
             ExerciseTutorialSection(name: name)
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("动作详情")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -63,6 +66,7 @@ private struct PlanExerciseEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+            Group {
                 Section("动作") {
                     TextField("动作名称", text: $draft.name)
                         .focused($focusedField, equals: .name)
@@ -81,7 +85,9 @@ private struct PlanExerciseEditor: View {
                         Text(errorMessage).foregroundStyle(Theme.danger)
                     }
                 }
-            }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("编辑动作")
             .navigationBarTitleDisplayMode(.inline)

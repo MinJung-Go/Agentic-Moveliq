@@ -205,6 +205,7 @@ struct CoachFeedbackView: View {
     @State private var token: String?
     var body: some View {
         Form {
+            Group {
             Section {
                 Text("这次练得怎么样？").font(.title2.weight(.semibold))
                 Text("可以稍后补充，实际训练记录已经单独保存。文字备注保留本机，难度与时间反馈以汇总用于后续规划。")
@@ -219,7 +220,9 @@ struct CoachFeedbackView: View {
             if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
             Button("告诉 Milo") { save() }.buttonStyle(PrimaryButtonStyle())
             Button("稍后再说") { dismiss() }.buttonStyle(SecondaryButtonStyle())
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("训练后反馈").navigationBarTitleDisplayMode(.inline)
         .task {
             token = ServiceCredentials.session?.token

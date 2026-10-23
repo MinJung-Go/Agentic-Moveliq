@@ -6,13 +6,9 @@ enum Theme {
 
     // MARK: - 强调色（全 App 唯一的交互色）
 
-    static let accent = Color("AccentColor")
-    static let onAccent = Color(red: 36.0 / 255, green: 22.0 / 255, blue: 0)
-    static let userBubble = Color(uiColor: UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.17, green: 0.17, blue: 0.19, alpha: 1)
-            : UIColor(red: 0.89, green: 0.89, blue: 0.92, alpha: 1)
-    })
+    static let accent = Journal.action
+    static let onAccent = surface(light: 0xFFFEFA, dark: 0x191A18)
+    static let userBubble = Journal.fill
 
     /// 次级按钮底（强调色淡底 + 强调色字）。
     ///
@@ -22,11 +18,11 @@ enum Theme {
 
     // MARK: - 表面
 
-    /// 页面底色：浅色保留系统分组底色，深色使用炭黑 #161719。
-    static let canvas = surface(light: .systemGroupedBackground, dark: 0x161719)
-    /// 聊天与报告正文：浅色白底、深色炭黑。
-    static let conversationCanvas = surface(light: .systemBackground, dark: 0x161719)
-    /// 第 33 轮第五版：首页与记录页的局部样式，不改聊天、报告及全局卡片。
+    /// Shared warm page background across all tabs and sheets.
+    static let canvas = Journal.canvas
+    /// Chat and reading use the same page background.
+    static let conversationCanvas = Journal.canvas
+    /// Shared semantic palette. Journal is kept as a source-compatible namespace.
     enum Journal {
         static let canvas = Theme.surface(light: 0xFFFEFA, dark: 0x191A18)
         static let panel = Theme.surface(light: 0xF3F0E8, dark: 0x262723)
@@ -41,12 +37,12 @@ enum Theme {
         static let columnGap: CGFloat = 16
         static let panelRadius: CGFloat = 16
     }
-    /// 卡片：浅色白底，深色 #232528。
-    static let card = surface(light: .secondarySystemGroupedBackground, dark: 0x232528)
-    /// 卡片内嵌块：指标块、字段行、缩略图、思考区容器（浅色 `#F2F2F7` / 深色 `#2C2E32`）
-    static let cardNested = surface(light: .tertiarySystemGroupedBackground, dark: 0x2C2E32)
+    /// 分组与卡片使用统一的暖色面板。
+    static let card = Journal.panel
+    /// 输入与卡片内嵌块共用中性填充。
+    static let cardNested = Journal.fill
     /// 中性填充：徽标底、未强调的柱、行内代码、图表里的非重点序列
-    static let chip = surface(light: .tertiarySystemFill, dark: 0x232528)
+    static let chip = Journal.fill
 
     private static func surface(light: UIColor, dark: UInt32) -> Color {
         Color(uiColor: UIColor { trait in
@@ -64,15 +60,11 @@ enum Theme {
                                blue: CGFloat(light & 0xFF) / 255, alpha: 1), dark: dark)
     }
 
-    /// 0.5pt 分隔线与描边：深色用白 8.5%、浅色用黑 5.5%。
+    /// 分隔线使用共享的浅深色线条 token。
     ///
     /// 只用于**导航层顶部分隔线**与**列表行分隔线**。不要拿它给卡片描边 ——
     /// iOS 的分组列表本来就没有边框，靠底色差分层；加了描边会显"web 味"。
-    static let hairline = Color(uiColor: UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor.white.withAlphaComponent(0.085)
-            : UIColor.black.withAlphaComponent(0.055)
-    })
+    static let hairline = Journal.line
 
     // MARK: - 语义色（内容分类，不参与交互）
 
@@ -81,12 +73,8 @@ enum Theme {
     static let danger = Color(uiColor: .systemRed)
     static let info = Color(uiColor: .systemBlue)
 
-    static let secondaryLabel = Color(uiColor: UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.71, green: 0.71, blue: 0.75, alpha: 1)
-            : UIColor(red: 0.35, green: 0.35, blue: 0.38, alpha: 1)
-    })
-    static let tertiaryLabel = Color(uiColor: .tertiaryLabel)
+    static let secondaryLabel = Journal.secondary
+    static let tertiaryLabel = Journal.metadata
 
     // MARK: - 间距（基准 8，结构值只用这几档）
 
@@ -554,5 +542,18 @@ struct BrandMark: View {
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.24))
             .accessibilityLabel("Moveliq")
+    }
+}
+
+
+extension View {
+    /// Native lists and forms share the same canvas and navigation background.
+    /// Row content sets listRowBackground separately so grouped surfaces remain visible.
+    func themedListSurface() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Theme.canvas)
+            .foregroundStyle(Theme.Journal.label)
+            .toolbarBackground(Theme.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
     }
 }

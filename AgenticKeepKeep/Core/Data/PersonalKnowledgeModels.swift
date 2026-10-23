@@ -10,6 +10,7 @@ import SwiftData
 }
 @Model final class ChatConversation {
     var uuid: UUID = UUID()
+    var draft: String = ""
     var title: String = "新的对话"
     var createdAt: Date = Date()
     var updatedAt: Date = Date()

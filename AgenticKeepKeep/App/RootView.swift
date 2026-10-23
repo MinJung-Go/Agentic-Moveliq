@@ -73,6 +73,9 @@ struct RootView: View {
             await ExerciseTutorialStore.shared.enrich(names: tutorialNames, context: context)
         }
         .tint(Theme.accent)
+        .foregroundStyle(Theme.Journal.label)
+        .toolbarBackground(Theme.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         // 导航层通栏实底（FR13.1）：内容从下方滚过时不该透出来
         .toolbarBackground(appState.selectedTab == .today ? Theme.conversationCanvas : Theme.canvas, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

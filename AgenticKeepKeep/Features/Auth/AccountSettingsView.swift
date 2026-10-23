@@ -6,6 +6,7 @@ struct AccountSettingsView: View {
     @State private var confirmsLogout = false
     var body: some View {
         Form {
+            Group {
             Section {
                 LabeledContent("用户名", value: auth.user?.username ?? "")
                 NavigationLink("我的邀请码") { InvitationsView() }
@@ -18,7 +19,9 @@ struct AccountSettingsView: View {
             Section {
                 Button("退出登录", role: .destructive) { confirmsLogout = true }
             } footer: { Text("退出后需重新登录，本机记录保留。") }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("账号与设置")
         .confirmationDialog("退出当前账号？", isPresented: $confirmsLogout, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) { Task { await auth.logout() } }
@@ -34,6 +37,7 @@ struct InvitationsView: View {
     @State private var copied: String?
     var body: some View {
         List {
+            Group {
             Section {
                 Text("把这份陪伴，分享给朋友。") .font(.title2.bold())
                 Text("每个邀请码可供一位朋友注册。朋友注册后，也会获得 3 个邀请码。")
@@ -58,7 +62,9 @@ struct InvitationsView: View {
                     }
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("我的邀请码")
         .task { await load() }
         .refreshable { await load() }

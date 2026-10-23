@@ -13,6 +13,7 @@ struct PlanManagementView: View {
 
     var body: some View {
         List {
+            Group {
             ForEach(plans) { plan in
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(plan.title)
@@ -23,7 +24,9 @@ struct PlanManagementView: View {
                     Button("删除", role: .destructive) { pendingDeletion = PlanDeletionTarget(plan) }
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .overlay { if plans.isEmpty { ContentUnavailableView("没有课程表", systemImage: "calendar") } }
         .navigationTitle("管理课程表")
         .navigationBarTitleDisplayMode(.inline)

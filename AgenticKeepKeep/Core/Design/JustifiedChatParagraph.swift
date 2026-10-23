@@ -31,11 +31,11 @@ struct JustifiedChatParagraph: UIViewRepresentable {
             if run.inlinePresentationIntent?.contains(.emphasized) == true { traits.insert(.traitItalic) }
             let descriptor = base.fontDescriptor.withSymbolicTraits(traits) ?? base.fontDescriptor
             var attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont(descriptor: descriptor, size: base.pointSize), .foregroundColor: UIColor.label
+                .font: UIFont(descriptor: descriptor, size: base.pointSize), .foregroundColor: UIColor(Theme.Journal.label)
             ]
             if run.inlinePresentationIntent?.contains(.code) == true {
                 attributes[.font] = UIFont.monospacedSystemFont(ofSize: base.pointSize, weight: .regular)
-                attributes[.backgroundColor] = UIColor.secondarySystemBackground
+                attributes[.backgroundColor] = UIColor(Theme.chip)
             }
             if run.inlinePresentationIntent?.contains(.strikethrough) == true { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
             if let link = run.link { attributes[.link] = link }

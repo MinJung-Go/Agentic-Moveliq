@@ -36,6 +36,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+            Group {
                 Section {
                     HStack(spacing: Theme.Spacing.m) {
                         BrandMark(size: 40)
@@ -83,13 +84,16 @@ struct SettingsView: View {
                 Section {
                     settingsLink(.about, symbol: "info.circle", detail: nil)
                 }
-            }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
             .scrollContentBackground(.hidden)
             .background(Theme.canvas)
             .toolbarBackground(Theme.canvas, for: .navigationBar)
             .navigationTitle("设置")
             .navigationDestination(for: Page.self) { page in
                 Form {
+            Group {
                     switch page {
                     case .model:
                         llmSection
@@ -100,7 +104,9 @@ struct SettingsView: View {
                     case .about:
                         aboutSection
                     }
-                }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
                 .navigationTitle(page.rawValue)
                 .navigationBarTitleDisplayMode(.inline)
             }

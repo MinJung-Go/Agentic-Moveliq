@@ -419,4 +419,58 @@ final class PersonalKnowledgeTests: XCTestCase {
         XCTAssertFalse(state.items[0].candidate)
     }
 
+    func testProfileFieldSaveIsIdempotentButStillRequiresEvidence() throws {
+        var state = KnowledgeState()
+        let value = KnowledgeContent(name: "姓名", description: "用户自述", body: "小林", profileField: .name)
+        let proof = evidence(.preference)
+        let id = try state.save(kind: .profile, content: value, evidence: [proof])
+        XCTAssertEqual(try state.save(kind: .profile, content: value, evidence: [proof]), id)
+        XCTAssertEqual(state.items.count, 1); XCTAssertEqual(state.notices.count, 1)
+        XCTAssertEqual(state.items[0].revision, 1)
+        XCTAssertThrowsError(try state.save(kind: .profile, content: value, evidence: []))
+        state.suppressedSources.append(proof.id)
+        XCTAssertThrowsError(try state.save(kind: .profile, content: value, evidence: [proof]))
+    }
+    func testProfileChangeUsesPatchAndPreservesOtherFields() throws {
+        var state = KnowledgeState()
+        let name = try state.save(kind: .profile, content: .init(name: "姓名", description: "用户自述", body: "小林", profileField: .name), evidence: [evidence()])
+        let pref = try state.save(kind: .profile, content: .init(name: "我的偏好", description: "沟通偏好", body: "先讲结论", profileField: .preferences), evidence: [evidence()])
+        XCTAssertThrowsError(try state.save(kind: .profile, content: .init(name: "另一个姓名", description: "用户自述", body: "小张", profileField: .name), evidence: [evidence()]))
+        try state.patch(id: pref, expected: 1, operationID: "profile-patch", patches: [.init(field: .body, oldString: "先讲结论", newString: "先讲结论，再解释理由")], evidence: [evidence()])
+        XCTAssertEqual(state.items.first { $0.id == name }?.content.body, "小林")
+        XCTAssertEqual(state.items.first { $0.id == pref }?.content.profileField, .preferences)
+        try state.undo(noticeID: state.notices.last!.id)
+        XCTAssertEqual(state.items.first { $0.id == pref }?.content.body, "先讲结论")
+    }
+    func testLegacyProfileMigrationPreservesUnknownAmbiguousAndInvalidTimezone() throws {
+        var state = KnowledgeState()
+        let name = KnowledgeItem(kind: .profile, content: .init(name: "姓名", description: "姓名", body: "小林"))
+        let first = KnowledgeItem(kind: .profile, content: .init(name: "偏好", description: "旧偏好", body: "简洁"))
+        let second = KnowledgeItem(kind: .profile, content: .init(name: "回答偏好", description: "旧偏好", body: "详细"))
+        let unknown = KnowledgeItem(kind: .profile, content: .init(name: "其他背景条目", description: "旧条目", body: "保留原文"))
+        let timezone = KnowledgeItem(kind: .profile, content: .init(name: "时区", description: "旧时区", body: "可能在中国"))
+        state.items = [name, first, second, unknown, timezone]
+        let migrated = PersonalProfileField.migrating(state)
+        XCTAssertEqual(migrated.items.map(\.id), state.items.map(\.id))
+        XCTAssertEqual(migrated.items.map { $0.content.body }, state.items.map { $0.content.body })
+        XCTAssertEqual(migrated.items[0].content.profileField, .name)
+        XCTAssertTrue(migrated.items.dropFirst().allSatisfy { $0.content.profileField == nil })
+        XCTAssertEqual(PersonalProfileField.migrating(migrated), migrated)
+        _ = try KnowledgeArchive.read(JSONEncoder().encode(KnowledgeArchive(state: migrated, account: "local")))
+    }
+    func testProfileArchiveCarriesStableFieldsAndReadableProjection() throws {
+        var state = KnowledgeState()
+        _ = try state.save(kind: .profile, content: .init(name: "称呼", description: "用户选择", body: "小林", profileField: .nickname), evidence: [evidence()])
+        let archive = try KnowledgeArchive.read(JSONEncoder().encode(KnowledgeArchive(state: state, account: "local")))
+        XCTAssertTrue(archive.userMarkdown.contains("## 称呼\n小林"))
+        let imported = try archive.applying(to: KnowledgeState(), replaceIDs: [])
+        XCTAssertEqual(imported.items.first?.content.profileField, .nickname)
+        XCTAssertEqual(imported.items.first?.content.body, "小林")
+    }
+    func testProfileTimezoneAndCategoryAreValidated() throws {
+        try KnowledgeRules.validate(.init(name: "时区", description: "本人提供", body: "Asia/Shanghai", profileField: .timezone), kind: .profile)
+        XCTAssertThrowsError(try KnowledgeRules.validate(.init(name: "时区", description: "本人提供", body: "somewhere", profileField: .timezone), kind: .profile))
+        XCTAssertThrowsError(try KnowledgeRules.validate(.init(name: "姓名", description: "本人提供", body: "小林", profileField: .name), kind: .memory))
+    }
+
 }

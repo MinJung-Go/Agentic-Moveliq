@@ -298,6 +298,7 @@ struct PlanDayDetailView: View {
 
     var body: some View {
         List {
+            Group {
             Section {
                 Picker("状态", selection: $day.status) {
                     Text("待做").tag(PlanDayStatus.pending)
@@ -357,7 +358,9 @@ struct PlanDayDetailView: View {
             } footer: {
                 Text("点动作查看训练参数；点「编辑」拖动排序，左滑可删除。")
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .confirmationDialog("删除动作？", isPresented: $isDeleteConfirmationPresented, titleVisibility: .visible) {
             Button("删除动作", role: .destructive) {
                 guard let id = deletionID else { return }

@@ -41,6 +41,7 @@ struct WorkoutDetailView: View {
 
     var body: some View {
         Form {
+            Group {
             Section("训练") {
                 TextField("标题", text: $session.title)
                 DatePicker("时间", selection: $session.date)
@@ -68,7 +69,9 @@ struct WorkoutDetailView: View {
                     dismiss()
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
     }
 }
 
@@ -158,6 +161,7 @@ struct MealDetailView: View {
 
     var body: some View {
         Form {
+            Group {
             if let data = meal.photoData, let image = UIImage(data: data) {
                 Section("照片") {
                     Button {
@@ -215,7 +219,9 @@ struct MealDetailView: View {
                     dismiss()
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
     }
 }
 
@@ -309,6 +315,7 @@ struct MetricDetailView: View {
 
     var body: some View {
         Form {
+            Group {
             Section("指标") {
                 Picker("类型", selection: $metric.kind) {
                     ForEach(MetricKind.allCases, id: \.self) { kind in
@@ -331,7 +338,9 @@ struct MetricDetailView: View {
                     dismiss()
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
     }
 }
 
@@ -351,6 +360,7 @@ struct RawNoteDetailView: View {
 
     var body: some View {
         Form {
+            Group {
             Section("原文") {
                 if let data = note.photoData, let image = UIImage(data: data) {
                     Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
@@ -403,7 +413,9 @@ struct RawNoteDetailView: View {
                     dismiss()
                 }
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
     }
 
     private func reparse() async {
@@ -438,6 +450,7 @@ struct HealthWorkoutDetailView: View {
 
     var body: some View {
         Form {
+            Group {
             Section("运动") {
                 LabeledContent("类型", value: workout.activityName)
                 LabeledContent("开始时间", value: Format.shortDay(workout.date) + " " + Format.time(workout.date))
@@ -459,6 +472,8 @@ struct HealthWorkoutDetailView: View {
                     .font(Theme.Font.badge)
                     .foregroundStyle(Theme.tertiaryLabel)
             }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
     }
 }

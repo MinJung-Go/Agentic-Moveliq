@@ -11,6 +11,7 @@ struct CoachLifeProfileView: View {
     private let names = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
     var body: some View {
         Form {
+            Group {
             Section {
                 Text("先告诉 Milo 最重要的几件事。未提供的内容保持未知，临时变化可以另设有效期。")
                     .font(.subheadline).foregroundStyle(Theme.secondaryLabel)
@@ -65,7 +66,9 @@ struct CoachLifeProfileView: View {
                 Button("清除这些偏好", role: .destructive) { profile = CoachLifeProfile(); save() }
             }
             if let message { Section { Text(message).font(.footnote) } }
-        }
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface()
         .navigationTitle("我的训练与日常").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("保存") { profile.confirmed = true; save() }.disabled(!loaded) } }
         .task {
@@ -104,6 +107,7 @@ struct CoachTemporaryStateView: View {
     @State private var token: String?
     var body: some View {
         Form {
+            Group {
             Section("告诉 Milo 今天有什么变化") {
                 TextField("例如：临时加班、出差、只有20分钟、今天很疲惫", text: $note, axis: .vertical).lineLimit(3...6)
                 DatePicker("有效至", selection: $expires, in: Date()...Date().addingTimeInterval(30 * 86400))
@@ -136,7 +140,9 @@ struct CoachTemporaryStateView: View {
                 }
             }
             if let error { Text(error).foregroundStyle(Theme.danger) }
-        }.navigationTitle("今天有变化").task {
+
+            }.listRowBackground(Theme.card)
+        }.themedListSurface().navigationTitle("今天有变化").task {
             token = ServiceCredentials.session?.token
             if let checkIn { note = checkIn.note; expires = checkIn.expiresAt }
         }
