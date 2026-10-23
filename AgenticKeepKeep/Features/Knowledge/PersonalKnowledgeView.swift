@@ -275,7 +275,13 @@ private struct KnowledgeEditView: View {
         Form {
             Section("名称") { TextField("名称", text: $name) }
             Section("简介") { TextField("适用场景或事实摘要", text: $summary, axis: .vertical) }
-            Section("内容") { TextEditor(text: $bodyText).frame(minHeight: 260) } footer: { Text("只修改需要调整的段落。技能请保留适用、步骤、注意三个章节。") }
+            Section {
+                TextEditor(text: $bodyText).frame(minHeight: 260)
+            } header: {
+                Text("内容")
+            } footer: {
+                Text("只修改需要调整的段落。技能请保留适用、步骤、注意三个章节。")
+            }
             if let error { Section { Text(error).foregroundStyle(.red); Button("读取最新内容") { confirmsReload = true } } }
             if let backup = draftBackup { Section("之前的草稿") { Text(backup.name).font(.headline); Text(backup.description).foregroundStyle(.secondary); Text(backup.body).textSelection(.enabled); Text("草稿保留在这里，可以复制需要的片段，再编辑上方最新内容。").font(.footnote).foregroundStyle(.secondary) } }
         }
