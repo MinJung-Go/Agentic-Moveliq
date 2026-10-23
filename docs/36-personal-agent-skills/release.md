@@ -1,6 +1,12 @@
 # 0.5.21（42）测试包
 
-分支：`feat/personal-agent-skills`。用户于 2026-10-23 要求打包；本次通过 GitHub Actions 手动 `build_ipa=true` 构建。当前正在发布，构建结果和下载链接待回填。
+分支：`feat/personal-agent-skills`。用户于 2026-10-23 要求打包；本次通过 GitHub Actions 手动 `build_ipa=true` 构建。构建提交 `b2accae5f117195aefe57fedfe2c928a286ddc82`；[本次构建](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39902760947) 的原生编译及 643 项单测通过（0 失败），IPA 已归档并上传成功。
+
+## 下载 0.5.21（42）
+
+[下载 IPA 产物](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39902760947/artifacts/12479129736)（需要仓库访问权限）。解压 ZIP 后，用原来的 AltStore／Sideloadly 签名覆盖安装。
+
+本地文件：`build/releases/0.5.21-42/KeepKeep-unsigned.ipa`。已验证 ZIP 完整性，App 与小组件包内版本均为 0.5.21（42）。文件大小 9,886,518 字节；SHA-256：`0e7ccdf3b00be6e11c9fca077aa7623328a87840dd701db050d502f88e9bb30a`。
 
 ## 本包变更
 
