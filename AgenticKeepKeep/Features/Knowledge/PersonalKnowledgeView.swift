@@ -325,7 +325,7 @@ private struct KnowledgeEditView: View {
                 Section("简介") { TextField("适用场景或事实摘要", text: $summary, axis: .vertical) }
             }
             Section {
-                TextEditor(text: $bodyText).frame(minHeight: 260)
+                TextEditor(text: $bodyText).scrollContentBackground(.hidden).background(Theme.card).frame(minHeight: 260)
             } header: {
                 Text("内容")
             } footer: {

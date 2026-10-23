@@ -70,6 +70,7 @@ final class LocalBrowserSearchTests: XCTestCase {
             XCTAssertThrowsError(try PublicSearchFeed.decode(Data(raw.utf8), count: 10, health: false))
         }
         XCTAssertThrowsError(try PublicSearchFeed.decode(Data("<html>captcha</html>".utf8), count: 10, health: false)) { XCTAssertEqual(($0 as? PublicWebError), .verification) }
+        XCTAssertThrowsError(try PublicSearchFeed.decode(Data("<!DOCTYPE html><html>Verify you are human</html>".utf8), count: 10, health: false)) { XCTAssertEqual(($0 as? PublicWebError), .verification) }
         let filtered = LocalBrowserPolicy.result([["url": "https://127.0.0.1/"]], count: 10)
         XCTAssertTrue(filtered.failed); XCTAssertTrue(filtered.content.contains("没有可安全读取"))
     }

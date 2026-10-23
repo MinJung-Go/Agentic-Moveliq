@@ -46,6 +46,8 @@ final class PublicSearchFeed: NSObject, XMLParserDelegate {
     static func decode(_ data: Data, count: Int, health: Bool, query: String? = nil) throws -> CoachToolResult {
         guard data.count <= 2_097_152 else { throw PublicWebError.tooLarge }
         let prefix = String(decoding: data, as: UTF8.self).lowercased()
+        if prefix.contains("<html"), !prefix.contains("<rss"),
+           prefix.contains("captcha") || prefix.contains("verify you are human") { throw PublicWebError.verification }
         guard !prefix.contains("<!doctype"), !prefix.contains("<!entity") else { throw PublicWebError.extraction }
         let delegate = PublicSearchFeed(), parser = XMLParser(data: data)
         parser.shouldResolveExternalEntities = false; parser.delegate = delegate
