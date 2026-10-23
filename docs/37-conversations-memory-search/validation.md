@@ -137,3 +137,27 @@ metadata 不据此授权放在任何背景上；装饰线条不承担唯一控�
 - 新增会话草稿／删除回退，以及搜索浏览面板的 4 项生命周期测试已在首轮原生测试通过。
 - 搜索结果页面按确认稿使用独立来源卡片，显示标题、域名、编号和摘要；模型收到的内容仍受原摘要预算约束。
 - 修订 `17708d3` 的中间 CI 已取消，避免构建已被后续修正替代的包；最终提交将完整重跑并单独记录。
+
+
+## 最终原生验证
+
+- 源码提交：`c48e7477d290cc8cfbae0e1bc4b9a891c75b8f1a`。
+- CI：[39914447995](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39914447995)。
+- 2026-10-23 07:09 UTC：iOS 编译成功，664 项 XCTest 全部通过，0 失败；音频、提示词预算、49 项个人知识及 16 项搜索预检查通过。
+- 资料字段写入的端到端数据层回归通过；`profile_field` 仅对 save 开放，其余操作继续使用原参数白名单。
+- 清空当前对话后同步恢复目标会话的草稿；新建／切换及删除回退不共用输入框草稿。
+- 最终来源校验同时检查 Bing 包装地址和解码目标，防止凭据／HTTP／非标准端口借包装绕过 URL 规则；浏览面板默认传输闭包的并发转换警告已消除。
+- 中间测试与取消的运行不作为最终交付依据；以本提交及上述 CI 为准。真机项目与中文查询覆盖率限制继续保留，不将自动化通过等同于真机验收。
+
+
+## 0.5.22（43）测试 IPA
+
+- 最终 CI 全部成功，包括 Release Archive、侧载权限嵌入校验和 IPA 上传；[运行记录](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39914447995)。
+- [下载 Actions 附件](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39914447995/artifacts/12485760530)；artifact `12485760530`，名称 `KeepKeep-unsigned-ipa`。
+- 本地文件：`build/releases/0.5.22-43/KeepKeep-unsigned.ipa`（构建目录已忽略，不提交二进制）。
+- App 与 Widget 均为 `0.5.22` / `43`；Bundle ID `com.minjung.keepkeep`，最低 iOS 17.0。
+- 服务地址：`https://moveliq.work/api`；没有改动或部署 Service。
+- IPA 大小：10,000,702 字节；ZIP CRC、主 App／Widget 版本、许可证、Metal 库及不包含模型权重检查通过。
+- SHA-256：`3f5859d252d686c003761625ab653f975650c4405b7d27f0697c80a8a2cbf96a`。
+- 该文件供 AltStore／Sideloadly 重新签名侧载，不是 TestFlight 或 App Store 发布包；没有声称已在真机安装验收。
+- 最后仅回填文档，不改变上述源码提交。中文查询在部分网络下仍有相关性限制，Safari 层级与返回、旧数据库升级、大字号、VoiceOver、键盘和浅深色仍需真机验收。

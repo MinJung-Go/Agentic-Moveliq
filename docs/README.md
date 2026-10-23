@@ -2,7 +2,7 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
-第 37 轮已建立需求与设计提案：重做会话切换与记忆组件，参考 aim-a-evoagent-2026 结构化个人资料，开放通用网页搜索并优先健康权威来源，统一全 App 浅深色。沿用当前分支；尚未接入 App，等待本轮设计确认。[需求](37-conversations-memory-search/requirements.md) · [方案](37-conversations-memory-search/proposal.md) · [清单](37-conversations-memory-search/checklist.md) · [交互稿](37-conversations-memory-search/design.html) · [六屏配色对照](37-conversations-memory-search/design.colors.html) · [调查与验证](37-conversations-memory-search/validation.md)。
+第 37 轮已接入 App：重做会话切换与记忆组件，参考 aim-a-evoagent-2026 结构化个人资料，开放通用网页搜索并优先健康权威来源，统一全 App 浅深色。沿用当前分支；原生编译与 664 项单测通过，[0.5.22（43）测试 IPA 已生成](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39914447995/artifacts/12485760530)。目标地区中文搜索、Safari 与真机视觉体验仍待验收。[需求](37-conversations-memory-search/requirements.md) · [方案](37-conversations-memory-search/proposal.md) · [清单](37-conversations-memory-search/checklist.md) · [交互稿](37-conversations-memory-search/design.html) · [六屏配色对照](37-conversations-memory-search/design.colors.html) · [调查与验证](37-conversations-memory-search/validation.md)。
 
 第 36 轮需求已整理：Personal Agent 个人资料、长期记忆与对话抽取的技能，支持跨会话搜索使用、本机管理及手动导入导出。第一版接入文字／语音转文字聊天，实时通话与云端同步后续做。[需求](36-personal-agent-skills/requirements.md) · [方案草案](36-personal-agent-skills/proposal.md) · [清单](36-personal-agent-skills/checklist.md) · [第一版交互稿](36-personal-agent-skills/design.html)。设计稿已于 2026-10-23 获确认，第一版已接入 App；原生编译及 643 项单测通过，已生成 [0.5.21（42）测试包](36-personal-agent-skills/release.md)；真机验收另见清单。
 
