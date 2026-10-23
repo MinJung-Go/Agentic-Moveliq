@@ -28,7 +28,8 @@ final class CoachMemoryStore: ObservableObject {
         try Task.checkCancellation()
         guard generation == expected else { throw CancellationError() }
         let messages = try context.fetch(FetchDescriptor<ChatMessage>())
-        let ordered = Self.ordered(messages)
+        guard let source = messages.first(where: { $0.uuid == memory.sessionID }) else { throw CancellationError() }
+        let ordered = Self.ordered(messages.filter { $0.conversationID == source.conversationID })
         guard let anchor = Self.anchor(in: ordered), anchor.uuid == memory.sessionID,
               memory.isValid(for: CoachHistoryBuilder.turns(ordered)) else { throw CancellationError() }
         let previous = anchor.coachMemoryJSON

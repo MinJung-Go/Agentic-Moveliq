@@ -331,6 +331,7 @@ struct CoachContext: Equatable {
     /// 当前数据库状态，不由历史摘要覆盖。
     var planState: String = ""
     var lifeContext: String = ""
+    var personalContext: String = ""
 }
 
 /// 计划草稿（function call 返回，确认后入库）

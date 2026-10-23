@@ -20,7 +20,10 @@ struct CoachChatView: View {
     @EnvironmentObject private var appState: AppState
 
     @Query(sort: [SortDescriptor(\ChatMessage.date)])
-    private var messages: [ChatMessage]
+    private var allMessages: [ChatMessage]
+    @State private var conversationID: UUID?
+    @State private var showsConversations = false
+    private var messages: [ChatMessage] { allMessages.filter { $0.conversationID == conversationID } }
     @Query(sort: [SortDescriptor(\CoachActionRecord.date, order: .reverse)]) private var pluginActions: [CoachActionRecord]
 
     @State private var inputText = ""
@@ -91,7 +94,7 @@ struct CoachChatView: View {
                 Button("清空对话", role: .destructive) { clearHistory() }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text("将删除聊天历史，已保存的课程表和训练记录会保留。")
+                Text("只删除当前会话。已保存的个人资料、长期记忆、技能、课程表和训练记录会保留，可在「Milo 的记忆」单独管理。")
             }
             .alert("数据使用说明", isPresented: $showsDataUsage) {
                 Button("知道了", role: .cancel) {}
@@ -99,6 +102,8 @@ struct CoachChatView: View {
                 Text(profileText.isEmpty ? "按需查询本机记录的聚合数据，未默认加载全部历史。" : profileText)
             }
             .task {
+                do { conversationID = try PersonalKnowledgeStore.prepareConversation(context) }
+                catch { errorText = error.localizedDescription; return }
                 loadProfile()
                 if !consumedInitialMessage {
                     consumedInitialMessage = true
@@ -116,8 +121,16 @@ struct CoachChatView: View {
                 Task { try? await browser.preview(url) }
                 return .handled
             })
+            .sheet(isPresented: $showsConversations) {
+                NavigationStack { ChatConversationsView(activeID: conversationID) { id in
+                    _ = memoryStore.begin(); conversationID = id; errorText = nil; toolActivities = []; inputText = ""
+                } }
+            }
             .sheet(isPresented: $browser.isPresented) { LocalBrowserView(browser: browser) }
-            .onDisappear { dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel() }
+            .onDisappear {
+                dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel()
+                isSending = false; isPreparingContext = false; streamingText = ""; streamingReasoning = ""
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { dictation.finish(); realtime.pause() }
             }
@@ -146,12 +159,18 @@ struct CoachChatView: View {
                     .accessibilityLabel("关闭 \(displayName)")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { PersonalKnowledgeView() } label: {
+                        Image(systemName: "book.closed").frame(width: 44, height: 44)
+                    }.accessibilityLabel("Milo 的记忆")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button("切换或新建对话", systemImage: "bubble.left.and.bubble.right") { showsConversations = true }.disabled(isSending || showsRealtime)
                         if let pending = pendingPlan {
                             Button("不采用这份计划") { reject(message: pending) }
                         }
                         Button("数据使用说明", systemImage: "chart.bar.doc.horizontal") { showsDataUsage = true }
-                        Button("清空对话", role: .destructive) { confirmsClearHistory = true }
+                        Button("清空当前对话", role: .destructive) { confirmsClearHistory = true }.disabled(isSending)
                     } label: {
                         Image(systemName: "ellipsis")
                             .foregroundStyle(Theme.secondaryLabel)
@@ -182,8 +201,12 @@ struct CoachChatView: View {
         dictation.finish()
         isInputFocused = false
         realtime.open(history: messages.suffix(12).map { (role: $0.role.rawValue, text: $0.content) })
+        let token = ServiceCredentials.session?.token
         realtime.onText = { role, text in
-            context.insert(ChatMessage(role: role == "user" ? .user : .assistant, content: text))
+            guard (try? CoachLifeStore.checkAccount(context: context, token: token)) != nil else { return }
+            let message = ChatMessage(role: role == "user" ? .user : .assistant, content: text)
+            message.conversationID = conversationID; message.isRealtime = true
+            context.insert(message)
             do { try context.save() }
             catch { appState.showToast("通话文字保存失败，请检查存储空间") }
         }
@@ -270,7 +293,8 @@ struct CoachChatView: View {
                     if isSending {
                         streamingBubble.id(Self.streamingAnchor)
                     }
-                    ForEach(pluginActions.filter { ["pending", "partial", "executing"].contains($0.state) || ($0.state == "succeeded" && $0.date.timeIntervalSinceNow > -1800) }.prefix(12), id: \.uuid) { action in
+                    if let conversationID { ConversationKnowledgeNotices(conversationID: conversationID) }
+                    ForEach(pluginActions.filter { $0.conversationID == conversationID }.filter { ["pending", "partial", "executing"].contains($0.state) || ($0.state == "succeeded" && $0.date.timeIntervalSinceNow > -1800) }.prefix(12), id: \.uuid) { action in
                         CoachPluginActionCard(action: action)
                     }
 
@@ -415,6 +439,9 @@ struct CoachChatView: View {
             return
         }
 
+        let sessionToken = ServiceCredentials.session?.token
+        do { try CoachLifeStore.checkAccount(context: context, token: sessionToken) }
+        catch { errorText = error.localizedDescription; isSending = false; return }
         if suppliedText == nil { onMessageSubmitted?() }
         let generation = memoryStore.begin()
         let history = CoachHistoryBuilder.turns(messages)
@@ -427,7 +454,9 @@ struct CoachChatView: View {
         streamingReasoning = ""
         toolActivities = []
 
+        guard let conversationID else { isSending = false; errorText = "会话尚未准备好，请重新打开。"; return }
         let userMessage = ChatMessage(role: .user, content: text)
+        userMessage.conversationID = conversationID
         context.insert(userMessage)
         do { try context.save() }
         catch {
@@ -442,9 +471,12 @@ struct CoachChatView: View {
         var accumulatedReasoning = ""
         var reply: CoachReply?
         var proposalLifeRevision: String?
-        let sessionToken = ServiceCredentials.session?.token
         CoachAutomationCoordinator.shared.beginConversation()
-        defer { CoachAutomationCoordinator.shared.endConversation(context: context) }
+        PersonalLearningCoordinator.shared.beginChat()
+        defer {
+            CoachAutomationCoordinator.shared.endConversation(context: context)
+            PersonalLearningCoordinator.shared.endChat(context: context)
+        }
         // 每个 chunk 都重排气泡会把主线程打满，合并到 60ms 窗口（设计系统 §10）
         var throttle = StreamThrottle()
 
@@ -452,6 +484,10 @@ struct CoachChatView: View {
             let client = try settings.makeRecordingClient()
             var coachContext = CoachContext()
             coachContext.persona = MiloPersona(defaults: .standard)
+            coachContext.personalContext = try PersonalKnowledgeStore.personalContext(context, query: text)
+            try PersonalKnowledgeStore.touchConversation(conversationID, text: text, context: context)
+            let skillSession = PersonalSkillSession()
+            let skillSources = Array(try PersonalKnowledgeStore.sources(context, conversation: conversationID).suffix(4))
             coachContext.planState = try CoachPlanContext.build(context: context, query: text)
             let plugins = try CoachLifeStore.plugins(context)
             let lifeProfile = try CoachLifeStore.profile(context)
@@ -460,13 +496,13 @@ struct CoachChatView: View {
             if lifeProfile.confirmed || text.range(of: "计划|安排|规划|调整|加班|出差|疲惫|复盘|漏练|只有.*分钟", options: .regularExpression) != nil {
                 coachContext.lifeContext = CoachToolClient.bounded(try CoachLifeContextBuilder.summary(context: context), bytes: 7000)
             }
-            profileText = "按需查询本机记录的聚合数据，未默认加载全部历史。"
+            profileText = "按需查询本机记录的聚合数据及相关个人记忆；对话片段会用于异步整理个人知识。不发送原始健康记录或模型思考过程。可在「Milo 的记忆」查看、编辑、删除及导出。"
 
             var searchSources: [URL] = []
             let pluginDefinitions = CoachPluginTools.definitions(enabled: plugins.enabled,
                 calendarReady: CalendarPluginService.shared.fullAccess,
                 alarmReady: AlarmPluginService.available && AlarmPluginService.status == "已授权",
-                musicReady: MusicPluginService.shared.authorized)
+                musicReady: MusicPluginService.shared.authorized) + [PersonalSkillTool.definition]
             let queryTools = CoachTools(webSearchEnabled: settings.webSearchEnabled && plugins.enabled.contains(.browser), pluginDefinitions: pluginDefinitions, onActivity: { activity in
                 guard memoryStore.generation == generation else { return }
                 if let index = toolActivities.firstIndex(where: { $0.id == activity.id }) {
@@ -478,9 +514,13 @@ struct CoachChatView: View {
                 try Task.checkCancellation()
                 guard memoryStore.generation == generation else { throw CancellationError() }
                 try CoachLifeStore.checkAccount(context: context, token: sessionToken)
+                if call.name == PersonalSkillTool.definition.name {
+                    return try await skillSession.execute(call, sources: skillSources, context: context, token: sessionToken, client: client)
+                }
                 if pluginDefinitions.contains(where: { $0.name == call.name }) {
                     return try await CoachPluginExecutor.execute(call, context: context, token: sessionToken,
-                        allowsNearby: text.range(of: "附近|周边|身边|当前位置", options: .regularExpression) != nil)
+                        allowsNearby: text.range(of: "附近|周边|身边|当前位置", options: .regularExpression) != nil,
+                        conversationID: conversationID)
                 }
                 if call.name == CoachTools.records.name {
                     guard let query = CoachAgent.decodeArguments(CoachRecordQuery.self, from: call) else {
@@ -565,6 +605,7 @@ struct CoachChatView: View {
         }
 
         guard memoryStore.generation == generation else { return }
+        guard (try? CoachLifeStore.checkAccount(context: context, token: sessionToken)) != nil else { return }
         isSending = false
         isPreparingContext = false
         streamingText = ""
@@ -598,6 +639,7 @@ struct CoachChatView: View {
         if !toolActivities.isEmpty, let data = try? JSONEncoder().encode(toolActivities) {
             assistant.toolActivityJSON = String(data: data, encoding: .utf8)
         }
+        assistant.conversationID = conversationID
         context.insert(assistant)
         assistant.pendingLifeRevision = proposalLifeRevision
         do {
@@ -606,6 +648,8 @@ struct CoachChatView: View {
         if !Task.isCancelled, reply != nil {
             do { _ = try await CoachAutomationCoordinator.shared.applyIfAuthorized(message: assistant, context: context, token: sessionToken) }
             catch { errorText = "自动调整未完成，请查看今日安排中的实际结果：\(error.localizedDescription)" }
+            do { try PersonalLearningCoordinator.shared.enqueue(conversation: conversationID, context: context) }
+            catch { appState.showToast("回复已保存，记忆整理未排队：\(error.localizedDescription)") }
         }
     }
 
@@ -628,6 +672,10 @@ struct CoachChatView: View {
             return
         }
 
+        if let id = message.conversationID {
+            do { try PersonalLearningCoordinator.shared.enqueue(conversation: id, context: context) }
+            catch { appState.showToast("课程表已保存，记忆整理未排队") }
+        }
         Haptics.success()
         appState.showToast("已加入课程表：\(draft.title)")
         do {
@@ -651,6 +699,7 @@ struct CoachChatView: View {
                         Task { appState.showToast(await TrainingScheduleSync.retry(context: context)) }
                     } catch { appState.showToast("课程表已调整，关联同步待处理：\(error.localizedDescription)"); return }
                 }
+                if let id = message.conversationID { try PersonalLearningCoordinator.shared.enqueue(conversation: id, context: context) }
                 Haptics.success()
                 appState.showToast(receipt)
             }
@@ -672,7 +721,12 @@ struct CoachChatView: View {
         isPreparingContext = false
         streamingText = ""
         streamingReasoning = ""
-        do { try memoryStore.clear(context: context); errorText = nil }
+        do {
+            _ = memoryStore.begin()
+            if let id = conversationID { try PersonalKnowledgeStore.deleteConversation(id, context: context) }
+            conversationID = try PersonalKnowledgeStore.prepareConversation(context)
+            errorText = nil
+        }
         catch { context.rollback(); errorText = "清空失败，请重试" }
     }
 

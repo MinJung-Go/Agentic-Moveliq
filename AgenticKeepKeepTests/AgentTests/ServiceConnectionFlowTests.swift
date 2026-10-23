@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class ServiceConnectionFlowTests: XCTestCase {
     private enum Failure: Error { case request, account }
-    func testLegacyConfigurationDecodesWithoutResettingScope() throws {
+    func testLegacyConfigurationDecodesWithoutResettingScope() async throws {
         let data = Data(#"{"enabled":["calendar"],"calendarIDs":["private-calendar"],"writeCalendarID":"write-target","syncTrainingCalendar":true,"syncTrainingAlarms":false,"reminderMinutes":25}"#.utf8)
         let value = try JSONDecoder().decode(CoachPluginConfiguration.self, from: data)
         XCTAssertNil(value.healthEnabled)
@@ -12,13 +12,13 @@ final class ServiceConnectionFlowTests: XCTestCase {
         XCTAssertTrue(value.syncTrainingCalendar)
     }
 
-    func testNewAccountDoesNotInheritDeviceWideHealthSelection() {
+    func testNewAccountDoesNotInheritDeviceWideHealthSelection() async {
         let config = CoachPluginConfiguration()
         XCTAssertFalse(ServiceConnectionSelection.targets(config: config, onboarding: true, healthRequested: true).contains(.health))
         XCTAssertTrue(ServiceConnectionSelection.targets(config: config, onboarding: false, healthRequested: true).contains(.health))
     }
 
-    func testServiceSelectionPreservesScopeAndIndependentSyncSettings() {
+    func testServiceSelectionPreservesScopeAndIndependentSyncSettings() async {
         var config = CoachPluginConfiguration()
         config.calendarIDs = ["chosen"]; config.writeCalendarID = "write"
         config.syncTrainingCalendar = true; config.syncTrainingAlarms = true; config.reminderMinutes = 30

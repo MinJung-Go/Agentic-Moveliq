@@ -45,7 +45,7 @@ enum CoachLifeStore {
         return String(decoding: try encoder.encode(value), as: UTF8.self)
     }
     static func decode<T: Decodable>(_ type: T.Type, _ json: String) -> T? { try? JSONDecoder().decode(type, from: Data(json.utf8)) }
-    static func action(kind: String, payload: CoachActionPayload, in context: ModelContext) throws -> CoachActionRecord {
+    static func action(kind: String, payload: CoachActionPayload, in context: ModelContext, conversationID: UUID? = nil) throws -> CoachActionRecord {
         let json = try encode(payload)
         guard json.utf8.count <= 24_000 else { throw CoachPluginError.invalid }
         func identity(_ value: CoachActionPayload) -> CoachActionPayload {
@@ -53,8 +53,9 @@ enum CoachLifeStore {
             return value
         }
         let candidates = try context.fetch(FetchDescriptor<CoachActionRecord>())
-        if let existing = candidates.first(where: { $0.kind == kind && decode(CoachActionPayload.self, $0.payloadJSON).map(identity) == identity(payload) && $0.state == "pending" && $0.expiresAt > .now }) { return existing }
+        if let existing = candidates.first(where: { $0.conversationID == conversationID && $0.kind == kind && decode(CoachActionPayload.self, $0.payloadJSON).map(identity) == identity(payload) && $0.state == "pending" && $0.expiresAt > .now }) { return existing }
         let value = CoachActionRecord(kind: kind, payloadJSON: json)
+        value.conversationID = conversationID
         context.insert(value)
         do { try context.save() } catch { context.delete(value); throw error }
         return value

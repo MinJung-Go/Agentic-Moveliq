@@ -79,7 +79,10 @@ struct RootView: View {
         .environmentObject(appState)
         .onReceive(siri.$pending) { entry in handleSiri(entry) }
         .task { handleSiri(siri.pending) }
-        .task { CoachAutomationCoordinator.shared.setForeground(scenePhase == .active, context: context) }
+        .task {
+            CoachAutomationCoordinator.shared.setForeground(scenePhase == .active, context: context)
+            PersonalLearningCoordinator.shared.setForeground(scenePhase == .active, context: context)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .coachLifeChanged)) { _ in
             if scenePhase == .active { CoachAutomationCoordinator.shared.schedule(context: context) }
         }
@@ -88,8 +91,12 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, value in
             CoachAutomationCoordinator.shared.setForeground(value == .active, context: context)
+            PersonalLearningCoordinator.shared.setForeground(value == .active, context: context)
         }
-        .onDisappear { CoachAutomationCoordinator.shared.setForeground(false, context: context) }
+        .onDisappear {
+            CoachAutomationCoordinator.shared.setForeground(false, context: context)
+            PersonalLearningCoordinator.shared.setForeground(false, context: context)
+        }
         .sheet(isPresented: $appState.showsCoachDay) { NavigationStack { CoachDashboardView() }.environmentObject(appState) }
         .sheet(isPresented: $appState.showsMiloChat) { CoachChatView().environmentObject(appState) }
         .sheet(isPresented: $appState.isQuickLogPresented, onDismiss: {

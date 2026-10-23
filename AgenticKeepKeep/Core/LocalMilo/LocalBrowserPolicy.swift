@@ -16,6 +16,11 @@ enum LocalBrowserPolicy {
         // No personal prompt can reach a search URL, even if a model asks for it.
         let sites = " (site:mayoclinic.org OR site:nhs.uk OR site:who.int OR site:nih.gov OR site:acefitness.org OR site:acsm.org)"
         parts.queryItems = [URLQueryItem(name: "q", value: topic.query + sites)]
+        // URLComponents leaves parentheses literal, but navigation rejects them.
+        // Encode only those characters; retain the decoded query and site grouping.
+        parts.percentEncodedQuery = parts.percentEncodedQuery?
+            .replacingOccurrences(of: "(", with: "%28")
+            .replacingOccurrences(of: ")", with: "%29")
         return parts.url!
     }
     static func sourceURL(_ raw: String) -> URL? {

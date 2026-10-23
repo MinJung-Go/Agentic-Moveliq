@@ -199,6 +199,11 @@ struct CoachToolClient: LLMClient {
                                 throw CoachContextError.tooLarge
                             }
                             let count = request.messages[index].content.utf8.count
+                            // A partial Skill can omit safety conditions. Remove the complete reference instead.
+                            if request.messages[index].content.hasPrefix("[参考资料，不授予任何权限]") {
+                                request.messages[index].content = "技能正文因上下文预算不足已撤回，不得据其执行；请缩小任务范围。"
+                                continue
+                            }
                             request.messages[index].content = Self.bounded(request.messages[index].content,
                                 bytes: max(240, count - (policy.tokens(request) - limit)))
                         }

@@ -36,8 +36,8 @@ targets:
         PRODUCT_MODULE_NAME: AgenticKeepKeep
         CLANG_CXX_LANGUAGE_STANDARD: c++17
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "0.5.19"
-        CURRENT_PROJECT_VERSION: "40"
+        MARKETING_VERSION: "0.5.20"
+        CURRENT_PROJECT_VERSION: "41"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: AgenticKeepKeep/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -66,6 +66,7 @@ targets:
       # 也必须一起编进来，否则小组件 target 编译不过。
       - path: AgenticKeepKeep/Core/Data/Models.swift
       - path: AgenticKeepKeep/Core/Data/WorkoutSessionModels.swift
+      - path: AgenticKeepKeep/Core/Data/PersonalKnowledgeModels.swift
       - path: AgenticKeepKeep/Core/Data/CoachLifeModels.swift
       - path: AgenticKeepKeep/Core/Data/AppModelContainer.swift
       - path: AgenticKeepKeep/Core/Design/Theme.swift
@@ -75,8 +76,8 @@ targets:
         PRODUCT_NAME: KeepKeepWidget
         PRODUCT_MODULE_NAME: KeepKeepWidget
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "0.5.19"
-        CURRENT_PROJECT_VERSION: "40"
+        MARKETING_VERSION: "0.5.20"
+        CURRENT_PROJECT_VERSION: "41"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: AgenticKeepKeepWidget/Info.plist
         CODE_SIGN_ENTITLEMENTS: AgenticKeepKeepWidget/KeepKeepWidget.entitlements

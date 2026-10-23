@@ -616,6 +616,8 @@ final class PlanExercise {
 /// 与 CoachAgent 的一条消息
 @Model
 final class ChatMessage {
+    var conversationID: UUID?
+    var isRealtime: Bool = false
     var pendingLifeRevision: String?
     var uuid: UUID = UUID()
     var roleRaw: String = ChatRole.user.rawValue

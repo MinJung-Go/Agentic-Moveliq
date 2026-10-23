@@ -55,6 +55,9 @@ struct SettingsView: View {
                     NavigationLink { MiloSettingsView() } label: {
                         SettingsRowLabel(title: "\(displayName) · 相处方式", symbol: "person.crop.circle")
                     }
+                    NavigationLink { PersonalKnowledgeView() } label: {
+                        SettingsRowLabel(title: "Milo 的记忆", symbol: "book.closed")
+                    }
                     NavigationLink { CoachLifeProfileView() } label: {
                         SettingsRowLabel(title: "我的训练与日常", symbol: "person.text.rectangle")
                     }

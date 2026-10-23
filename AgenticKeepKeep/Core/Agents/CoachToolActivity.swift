@@ -18,6 +18,13 @@ struct CoachToolActivity: Codable, Identifiable, Equatable {
     }
 
     static func title(for call: LLMToolCall) -> String {
+        if call.name == "skill" {
+            switch call.arguments?.objectValue?["action"]?.stringValue {
+            case "search": return "查找你的技能"
+            case "load": return "读取相关方法"
+            default: return "整理个人技能"
+            }
+        }
         if call.name == CoachTools.search.name { return "搜索公开健身资料" }
         if call.name == CoachTools.reader.name { return "阅读公开网页" }
         let pluginTitles = ["query_life_context": "核对日常与训练安排", "query_calendar": "查询所选日历",

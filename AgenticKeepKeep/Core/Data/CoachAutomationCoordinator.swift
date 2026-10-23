@@ -68,9 +68,10 @@ final class CoachAutomationCoordinator: ObservableObject {
               try CoachLifeContextBuilder.revision(context: context) == lifeRevision else { throw CoachPluginError.stale }
         let message = ChatMessage(role: .assistant, content: reply.text ?? "已检查最新日常安排。",
             pendingAdjustmentJSON: reply.adjustmentArgumentsJSON)
+        message.conversationID = try PersonalKnowledgeStore.prepareConversation(context)
         message.pendingLifeRevision = lifeRevision
         if reply.adjustmentArgumentsJSON != nil {
-            for old in try context.fetch(FetchDescriptor<ChatMessage>()) where old.hasPendingAdjustment { old.adjustmentDecisionRaw = "superseded" }
+            for old in try context.fetch(FetchDescriptor<ChatMessage>()) where old.hasPendingAdjustment && old.conversationID == message.conversationID { old.adjustmentDecisionRaw = "superseded" }
         }
         context.insert(message); workspace.lastAutomationSignature = signature; try context.save()
         _ = try await applyIfAuthorized(message: message, context: context, token: token)

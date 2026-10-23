@@ -42,6 +42,10 @@ jobs:
         run: python3 scripts/test_coach_life_portable.py
       - name: 验证实际提示词与插件工具预算
         run: python3 scripts/test_coach_budget_portable.py
+      - name: 验证个人知识与 Skill 维护
+        run: python3 scripts/test_personal_knowledge_portable.py
+      - name: 验证浏览器搜索地址与导航策略
+        run: python3 scripts/test_browser_search_portable.py
 
   test:
     name: 构建 + 单元测试

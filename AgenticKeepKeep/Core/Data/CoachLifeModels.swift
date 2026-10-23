@@ -34,6 +34,8 @@ final class CoachCheckIn {
 
 @Model
 final class CoachActionRecord {
+    var conversationID: UUID?
+    var completedAt: Date?
     var uuid: UUID = UUID()
     var date: Date = Date()
     var kind: String = ""

@@ -4,14 +4,14 @@ import SwiftData
 @MainActor
 enum CoachPluginExecutor {
     private static var performing = Set<UUID>()
-    static func execute(_ call: LLMToolCall, context: ModelContext, token: String?, allowsNearby: Bool = false) async throws -> CoachToolResult {
+    static func execute(_ call: LLMToolCall, context: ModelContext, token: String?, allowsNearby: Bool = false, conversationID: UUID? = nil) async throws -> CoachToolResult {
         try CoachLifeStore.checkAccount(context: context, token: token)
         guard call.argumentsJSON.utf8.count <= 4096 else { throw CoachPluginError.invalid }
         let object = try JSONSerialization.jsonObject(with: Data(call.argumentsJSON.utf8)) as? [String: Any] ?? [:]
         let config = try CoachLifeStore.plugins(context)
         func require(_ plugin: CoachPlugin) throws { try CoachLifeStore.require(plugin, context: context, token: token) }
         func proposed(_ kind: String, _ payload: CoachActionPayload) throws -> CoachToolResult {
-            let record = try CoachLifeStore.action(kind: kind, payload: payload, in: context)
+            let record = try CoachLifeStore.action(kind: kind, payload: payload, in: context, conversationID: conversationID)
             return CoachToolResult(content: "操作卡\(record.uuid)已准备：\(payload.title)。尚未执行，用户确认后才生效。请简要说明，不声称已完成。")
         }
         switch call.name {
@@ -126,9 +126,14 @@ enum CoachPluginExecutor {
             case .browser: throw CoachPluginError.invalid
             }
             try revalidate()
-            record.state = "succeeded"; record.receipt = receipt
+            record.state = "succeeded"; record.receipt = receipt; record.completedAt = Date()
             do { try context.save() }
             catch { record.receipt += " 回执未能保存，重新打开后请先核对系统状态。"; throw error }
+            if let conversation = record.conversationID {
+                // A learning failure must not turn a completed system operation into a failed one.
+                do { try PersonalLearningCoordinator.shared.enqueue(conversation: conversation, context: context) }
+                catch { record.receipt += " 记忆整理未能排队，可在记忆页面手动整理此对话。"; try? context.save() }
+            }
         } catch {
             if record.state != "succeeded" {
                 record.state = "partial"
