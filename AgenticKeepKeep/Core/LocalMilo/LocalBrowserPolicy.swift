@@ -32,7 +32,7 @@ enum LocalBrowserPolicy {
         return domains.contains { host == $0 || host.hasSuffix("." + $0) }
     }
     static func sourceURL(_ raw: String) -> URL? {
-        guard var url = URL(string: raw) else { return nil }
+        guard var url = URL(string: raw), allows(url) else { return nil }
         if isSearchHost(url), url.path.hasPrefix("/ck/"),
            let encoded = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "u" })?.value, encoded.hasPrefix("a1") {
             var value = String(encoded.dropFirst(2)).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")

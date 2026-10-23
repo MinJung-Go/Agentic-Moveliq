@@ -13,7 +13,7 @@ final class LocalBrowserSession: ObservableObject {
     private(set) var opensSafari = false
     typealias Fetch = @Sendable (URL) async throws -> (Data, URL)
     private let fetch: Fetch
-    init(fetch: @escaping Fetch = PublicWebTransport.fetch) { self.fetch = fetch }
+    init(fetch: @escaping Fetch = { url in try await PublicWebTransport.fetch(url) }) { self.fetch = fetch }
     private var continuation: CheckedContinuation<CoachToolResult, Error>?
     private var pendingDismissal: (CheckedContinuation<CoachToolResult, Error>, Result<CoachToolResult, Error>)?
     private var worker: Task<Void, Never>?

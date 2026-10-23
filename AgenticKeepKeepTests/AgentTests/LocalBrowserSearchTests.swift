@@ -28,6 +28,12 @@ final class LocalBrowserSearchTests: XCTestCase {
             if destination.contains("swift.org") { XCTAssertEqual(result?.absoluteString, destination) } else { XCTAssertNil(result) }
         }
     }
+    func testSearchWrapperCannotHideUnsafeOrigin() {
+        let encoded = Data("https://www.swift.org/".utf8).base64EncodedString()
+        for origin in ["http://www.bing.com", "https://user:password@www.bing.com", "https://www.bing.com:8443"] {
+            XCTAssertNil(LocalBrowserPolicy.sourceURL(origin + "/ck/a?u=a1" + encoded))
+        }
+    }
     func testPublicQueryRoundTripDoesNotForceSiteRestriction() throws {
         for query in ["Swift language documentation", "力量训练 (频率) & 指南", "C++ basics"] {
             let url = LocalBrowserPolicy.searchURL(query: query, feed: true)
