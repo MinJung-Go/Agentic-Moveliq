@@ -203,3 +203,16 @@ metadata 不据此授权放在任何背景上；装饰线条不承担唯一控�
 ### 仍待验证
 
 本机无 Apple SDK，本次没有原生编译、WK 引擎运行、iOS 真机或移动网络验收；没有新提交、push、CI 或 IPA。跨源依赖页面、登录／验证码、网络重绑定及离屏 WebKit 调度均不做保证；不通过本轮绕过验证码，也不将 Safari 验证状态当作 WK 共享状态。后续打包前应先通过原生 CI，再用用户原始中文查询复验。
+
+
+## 0.5.23（44）最终发布记录 · 2026-10-23
+
+以上“未发布／未运行原生 CI”描述保留为开发阶段记录，本节为最终发布证据。
+
+- 代码提交：`8da4aadb3c892f77bbba7262231e69c33ff18ad5`，分支 `feat/personal-agent-skills`。
+- [CI 39934702102](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39934702102)：前置检查、原生构建、单测与 IPA 归档全部成功；**687 项 XCTest，0 失败**。
+- 4 项原生 WK 测试通过：动态插入内容、验证码识别、取消不启动导航、同源内容规则编译。浏览会话及失败回执测试也通过；模拟器结果不替代真机网络验证。
+- [IPA 下载](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39934702102/artifacts/12494895214)，产物 `KeepKeep-unsigned-ipa`；本地 `build/releases/0.5.23-44/KeepKeep-unsigned.ipa`（已忽略）。需 AltStore／Sideloadly 重签安装。
+- 校验通过：ZIP CRC，主 App 与 Widget 均为 0.5.23／44，Bundle ID `com.minjung.keepkeep`，最低 iOS 17.0，服务地址 `https://moveliq.work/api`，Metal 库及许可完整、未打包模型权重。
+- IPA 大小：9,998,498 字节。SHA-256：`713b4ec49cb9f802ba8d520cfc9dca1b76e7d34e993ac8ec6adb9a80c32cc04c`。
+- 尚未完成：用户真机关闭网页／连续搜索、目标地区中文查询覆盖率。没有更换搜索提供方或修改／部署 Service。
