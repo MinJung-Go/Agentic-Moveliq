@@ -31,18 +31,46 @@ final class ServiceTransport: NSObject, URLSessionTaskDelegate, @unchecked Senda
 enum ServiceCredentials {
     private static let account = "moveliq-auth-session-v1"
     private struct Stored: Codable { let server: String; let session: ServiceSession }
+    #if DEBUG
+    // Simulator integration tests can replace only the credential backing store.
+    // Encoding, server binding and all account checks still execute normally.
+    // This injection point is not compiled into Release archives.
+    struct TestStorage {
+        var read: () -> String?
+        var write: (String) -> Bool
+        var remove: () -> Void
+    }
+    static var storageForTesting: TestStorage?
+    #endif
+    private static func readStored() -> String? {
+        #if DEBUG
+        if let storageForTesting { return storageForTesting.read() }
+        #endif
+        return KeychainStore.get(account: account)
+    }
+    private static func writeStored(_ value: String) -> Bool {
+        #if DEBUG
+        if let storageForTesting { return storageForTesting.write(value) }
+        #endif
+        return KeychainStore.set(value, account: account)
+    }
     static var session: ServiceSession? {
-        guard let value = KeychainStore.get(account: account), let data = value.data(using: .utf8),
+        guard let value = readStored(), let data = value.data(using: .utf8),
               let stored = try? JSONDecoder().decode(Stored.self, from: data), stored.server == ServiceEndpoint.baseURL else { return nil }
         return stored.session
     }
     static func save(_ session: ServiceSession) throws {
         let data = try JSONEncoder().encode(Stored(server: ServiceEndpoint.baseURL, session: session))
-        guard KeychainStore.set(String(decoding: data, as: UTF8.self), account: account) else {
+        guard writeStored(String(decoding: data, as: UTF8.self)) else {
             throw AuthServiceError(status: 0, message: "无法保存登录凭据，请重试。")
         }
     }
-    static func clear() { KeychainStore.delete(account: account) }
+    static func clear() {
+        #if DEBUG
+        if let storageForTesting { storageForTesting.remove(); return }
+        #endif
+        KeychainStore.delete(account: account)
+    }
 }
 
 enum AuthAPI {

@@ -16,14 +16,14 @@ import SwiftData
         }
     }
     private func withKnowledgeAccount(_ body: (ModelContext, String) async throws -> Void) async throws {
-        let previousContainer = AppModelContainer.active, previousSession = ServiceCredentials.session
+        let previousContainer = AppModelContainer.active, previousStorage = ServiceCredentials.storageForTesting
         let container = try AppModelContainer.inMemory()
         let token = UUID().uuidString
+        var storedCredential: String?
+        ServiceCredentials.storageForTesting = .init(read: { storedCredential }, write: { storedCredential = $0; return true }, remove: { storedCredential = nil })
         defer {
             AppModelContainer.active = previousContainer
-            if let previousSession {
-                do { try ServiceCredentials.save(previousSession) } catch { XCTFail("Unable to restore test session: \(error)") }
-            } else { ServiceCredentials.clear() }
+            ServiceCredentials.storageForTesting = previousStorage
         }
         try ServiceCredentials.save(.init(user: .init(id: UUID().uuidString, username: "knowledge-test"), token: token, expiresAt: "2099-01-01T00:00:00.000Z"))
         AppModelContainer.active = container
