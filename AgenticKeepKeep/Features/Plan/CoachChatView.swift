@@ -699,6 +699,7 @@ struct CoachChatView: View {
             _ = memoryStore.begin()
             if let id = conversationID { try PersonalKnowledgeStore.deleteConversation(id, context: context) }
             conversationID = try PersonalKnowledgeStore.prepareConversation(context)
+            inputText = PersonalKnowledgeStore.draft(conversationID, context: context)
             errorText = nil
         }
         catch { context.rollback(); errorText = "清空失败，请重试" }
