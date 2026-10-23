@@ -52,7 +52,7 @@ final class PublicWebTransport: NSObject, URLSessionTaskDelegate, @unchecked Sen
         completionHandler(URLRequest(url: url, timeoutInterval: 25))
     }
 
-    private static func checkAddress(_ url: URL) throws {
+    static func checkAddress(_ url: URL) throws {
         guard LocalBrowserPolicy.allows(url), let host = url.host else { throw PublicWebError.unsafeAddress }
         var hints = addrinfo()
         hints.ai_family = AF_UNSPEC

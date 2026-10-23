@@ -1,0 +1,32 @@
+// Run with Playwright installed; optional MOVELIQ_PLAYWRIGHT_MODULE and MOVELIQ_CHROMIUM_EXECUTABLE.
+const fs=require('fs');
+const {chromium}=require(process.env.MOVELIQ_PLAYWRIGHT_MODULE || 'playwright');
+const path=require('path').join(__dirname,'../AgenticKeepKeep/Core/LLM/RenderedWebPage.swift');
+const swift=fs.readFileSync(path,'utf8');
+const fragment=name=>swift.match(new RegExp('static let '+name+' = #"""\\n([\\s\\S]*?)\\n    """#'))[1];
+const script=kind=>'(() => {\n'+fragment('common')+fragment(kind)+'\n})()';
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.MOVELIQ_CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage(); let fixture='';
+ await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:fixture}));
+ const load=async html=>{fixture=html;await page.goto('https://www.bing.com/search?q=Swift')};
+ const extract=async kind=>JSON.parse(await page.evaluate(script(kind)));
+ let passed=0;const check=(condition,name)=>{if(!condition)throw Error(name);passed++;console.log('PASS '+name)};
+ await load('<main><a href="https://www.swift.org/">Unstructured link</a></main>');
+ check((await extract('search')).state==='pending','Unknown structure is not a successful search');
+ await load('<div id="b_results"><li class="b_algo"><h2><a href="https://www.swift.org/">Swift guide</a></h2><p>Documentation</p></li><li class="b_ad"><h2><a href="https://ads.test/">Ad</a></h2></li></div>');
+ let result=await extract('search');check(result.rows.length===1&&result.rows[0].text==='Documentation','Organic result and summary, advertisement excluded');
+ await load('<div id="b_results"></div><script>setTimeout(()=>document.getElementById("b_results").innerHTML=\'<li class="b_algo"><h2><a href="https://www.swift.org/">Swift dynamic</a></h2></li>\',150)</script>');
+ check((await extract('search')).state==='pending','Delayed DOM starts pending');
+ await page.waitForTimeout(250);check((await extract('search')).rows.length===1,'Delayed DOM becomes ready');
+ await load('<div id="b_results" style="display:none"><li class="b_algo"><h2><a href="https://www.swift.org/">Swift hidden until styles load</a></h2><p>Guide</p></li></div>');
+ check((await extract('search')).rows.length===1,'Offscreen result text does not require innerText');
+ await load('<div id="b_results"><li class="b_no">没有找到相关结果</li></div>');
+ check((await extract('search')).state==='empty','Explicit empty state recognized');
+ await load('<h1>Verify you are human</h1>');check((await extract('search')).state==='verification','Challenge is not content');
+ await load('<main><h1>Article</h1><nav>EXCLUDE_NAV</nav><div hidden>EXCLUDE_HIDDEN</div><p>'+('Public documentation. '.repeat(30))+'</p><script>const secret="EXCLUDE_SCRIPT";</script><footer>EXCLUDE_FOOTER</footer></main>');
+ result=await extract('article');check(result.state==='ready'&&!result.text.includes('EXCLUDE_'),'Article excludes page furniture and hidden data');
+ await load('<main>'+('Long content '.repeat(10000))+'</main>');check((await extract('article')).text.length<=16000,'Rendered output bounded');
+ console.log(passed+' DOM assertions passed (Chromium; not iOS WKWebView)');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

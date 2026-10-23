@@ -14,9 +14,12 @@ with tempfile.TemporaryDirectory(prefix="moveliq-browser-search-") as directory:
     source.mkdir(parents=True)
     tests.mkdir(parents=True)
     for relative in ["Core/LLM/FitnessSearchTopic.swift", "Core/Agents/CoachToolResult.swift",
-                     "Core/LocalMilo/LocalBrowserPolicy.swift", "Core/LLM/PublicWebSearch.swift"]:
+                     "Core/LocalMilo/LocalBrowserPolicy.swift", "Core/LLM/PublicWebSearch.swift",
+                     "Core/LLM/PublicWebRetriever.swift", "Core/LLM/RenderedWebPage.swift"]:
         shutil.copy2(root / "AgenticKeepKeep" / relative, source)
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/LocalBrowserSearchTests.swift", tests)
+    shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/PublicWebRetrieverTests.swift", tests)
+    shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/RenderedWebFallbackTests.swift", tests)
     (package / "Package.swift").write_text('''// swift-tools-version: 5.9
 import PackageDescription
 let package = Package(name: "BrowserSearchChecks", platforms: [.macOS(.v13)], targets: [

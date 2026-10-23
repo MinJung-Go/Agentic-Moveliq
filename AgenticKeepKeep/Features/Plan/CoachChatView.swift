@@ -118,7 +118,7 @@ struct CoachChatView: View {
                 guard LocalBrowserPolicy.allows(url) else {
                     return .systemAction
                 }
-                Task { try? await browser.preview(url) }
+                try? browser.preview(url)
                 return .handled
             })
             .sheet(isPresented: $showsConversations) {
@@ -126,12 +126,12 @@ struct CoachChatView: View {
                     switchConversation(id)
                 } }
             }
-            .sheet(isPresented: $browser.isPresented, onDismiss: { browser.presentationDidDismiss() }) { LocalBrowserView(browser: browser) }
+            .sheet(item: $browser.page) { page in LocalBrowserView(url: page.url).ignoresSafeArea() }
             .onChange(of: inputText) { _, text in
                 if let conversationID { do { try PersonalKnowledgeStore.saveDraft(text, conversation: conversationID, context: context) } catch { errorText = error.localizedDescription } }
             }
             .onDisappear {
-                dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.cancel()
+                dictation.finish(); finishRealtime(); stopStreaming(); _ = memoryStore.begin(); browser.closePreview()
                 isSending = false; isPreparingContext = false; streamingText = ""; streamingReasoning = ""
             }
             .onChange(of: scenePhase) { _, phase in

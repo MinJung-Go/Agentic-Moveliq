@@ -172,6 +172,9 @@ struct CoachToolClient: LLMClient {
                                         result = try await tools.execute(call)
                                         try Task.checkCancellation()
                                         activity.finish(result.failed ? .failed : .completed, since: start)
+                                        if result.failed && (call.name == CoachTools.search.name || call.name == CoachTools.reader.name) {
+                                            activity.failureReason = "未取得可用的公开内容，不能作为已核实来源。请换用公共关键词重试。"
+                                        }
                                     } catch {
                                         let cancelled = Task.isCancelled || error is CancellationError || (error as? LLMError) == .cancelled
                                         activity.finish(cancelled ? .cancelled : .failed, since: start)
@@ -179,6 +182,7 @@ struct CoachToolClient: LLMClient {
                                             await tools.onActivity(activity)
                                             throw CancellationError()
                                         }
+                                        activity.failureReason = (error as? PublicWebError)?.localizedDescription
                                         let detail = (error as? CoachPluginError)?.localizedDescription ?? (error as? PublicWebError)?.localizedDescription ?? "未获取可用结果。"
                                         result = CoachToolResult(content: "工具未完成：\(detail) 不能视为没有记录或操作已成功。", failed: true)
                                     }

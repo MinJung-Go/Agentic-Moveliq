@@ -88,6 +88,27 @@ final class CoachSpeedTests: XCTestCase {
         XCTAssertEqual(events.map(\.status), [.running, .failed])
     }
 
+    func testPublicWebFailureRetainsSafeReason() async throws {
+        var events: [CoachToolActivity] = []
+        let search = LLMToolCall(id: "search", name: CoachTools.search.name, argumentsJSON: #"{"query":"Swift"}"#)
+        let client = MockLLMClient(responses: [.calls([search]), .text("需要验证，尚未核实来源")])
+        let tools = CoachTools(webSearchEnabled: true, onActivity: { events.append($0) }) { _ in
+            throw PublicWebError.verification
+        }
+        _ = try await CoachAgent(client: client, tools: tools).reply(history: [], userMessage: "查询 Swift")
+        XCTAssertEqual(events.last?.status, .failed)
+        XCTAssertEqual(events.last?.failureReason, PublicWebError.verification.localizedDescription)
+        let json = String(decoding: try JSONEncoder().encode(events), as: UTF8.self)
+        XCTAssertEqual(CoachToolActivity.decode(json), events)
+    }
+
+    func testOldActivityWithoutFailureReasonStillDecodes() throws {
+        let json = #"[{"id":"00000000-0000-0000-0000-000000000001","title":"查询","status":"failed"}]"#
+        let activity = try XCTUnwrap(CoachToolActivity.decode(json).first)
+        XCTAssertNil(activity.failureReason)
+        XCTAssertEqual(activity.status, .failed)
+    }
+
     func testActivityPersistsAndIsExcludedFromChatHistory() throws {
         let context = ModelContext(try AppModelContainer.inMemory())
         let message = ChatMessage(role: .assistant, content: "已有回复")

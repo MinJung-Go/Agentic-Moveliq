@@ -21,11 +21,13 @@ struct PublicSearchArguments: Decodable {
 }
 
 enum PublicWebError: LocalizedError, Equatable {
-    case privateQuery, verification, extraction, network, unsafeAddress, tooLarge
+    case privateQuery, verification, extraction, network, unsafeAddress, tooLarge, renderTimeout, renderRestricted
     var errorDescription: String? {
         switch self {
+        case .renderTimeout: return "网页渲染读取超时，尚未取得可用内容，请稍后重试。"
+        case .renderRestricted: return "网页依赖跨站跳转或受限资源，暂时无法自动读取。"
         case .privateQuery: return "请只用公共关键词搜索，不包含姓名、联系方式、个人病历或完整对话。"
-        case .verification: return "网页需要验证。可以继续在 Safari 浏览，但 Milo 尚未取得可用内容。"
+        case .verification: return "网页需要验证或登录，Milo 尚未取得可用内容。请稍后重试或更换公开来源。"
         case .extraction: return "网页已返回，但暂时提取不到可用内容。可以继续浏览或重试；尚未核实来源。"
         case .network: return "搜索或网页暂时无法连接，请检查网络后重试。"
         case .unsafeAddress: return "仅支持公开 HTTPS 网页，不能读取本机或内网地址。"

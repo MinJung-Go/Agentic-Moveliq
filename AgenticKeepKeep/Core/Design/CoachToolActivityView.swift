@@ -56,7 +56,7 @@ struct CoachToolActivityView: View {
         switch activity.status {
         case .running: return "进行中"
         case .completed: return "执行完成"
-        case .failed: return "查询失败"
+        case .failed: return activity.failureReason.map { "查询失败：" + $0 } ?? "查询失败"
         case .cancelled: return "已取消"
         }
     }

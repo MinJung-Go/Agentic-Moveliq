@@ -10,6 +10,8 @@ struct CoachToolActivity: Codable, Identifiable, Equatable {
     var title: String
     var status: Status = .running
     var duration: TimeInterval?
+    /// Only app-defined error descriptions; never raw response bodies or query parameters.
+    var failureReason: String? = nil
 
     mutating func finish(_ status: Status, since start: ContinuousClock.Instant) {
         self.status = status
@@ -25,7 +27,7 @@ struct CoachToolActivity: Codable, Identifiable, Equatable {
             default: return "整理个人技能"
             }
         }
-        if call.name == CoachTools.search.name { return "搜索公开健身资料" }
+        if call.name == CoachTools.search.name { return "搜索公开资料" }
         if call.name == CoachTools.reader.name { return "阅读公开网页" }
         let pluginTitles = ["query_life_context": "核对日常与训练安排", "query_calendar": "查询所选日历",
             "propose_calendar_change": "准备日程确认卡", "query_moveliq_alarms": "查询 Moveliq 闹钟",
