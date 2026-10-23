@@ -2,7 +2,7 @@
 
 按「轮次」组织：每一轮（一次需求交付，或一轮反馈修复）一个文件夹，文件夹内自带该轮的需求、实施清单与设计稿。
 
-第 36 轮需求已整理：Personal Agent 个人资料、长期记忆与对话抽取的技能，支持跨会话搜索使用、本机管理及手动导入导出。第一版接入文字／语音转文字聊天，实时通话与云端同步后续做。[需求](36-personal-agent-skills/requirements.md) · [方案草案](36-personal-agent-skills/proposal.md) · [清单](36-personal-agent-skills/checklist.md) · [第一版交互稿](36-personal-agent-skills/design.html)。设计稿已于 2026-10-23 获确认，第一版已接入 App；可移植验证与原生 CI／真机验证分开记录，见清单。
+第 36 轮需求已整理：Personal Agent 个人资料、长期记忆与对话抽取的技能，支持跨会话搜索使用、本机管理及手动导入导出。第一版接入文字／语音转文字聊天，实时通话与云端同步后续做。[需求](36-personal-agent-skills/requirements.md) · [方案草案](36-personal-agent-skills/proposal.md) · [清单](36-personal-agent-skills/checklist.md) · [第一版交互稿](36-personal-agent-skills/design.html)。设计稿已于 2026-10-23 获确认，第一版已接入 App；原生编译及 628 项单测通过，已生成 [0.5.20（41）测试包](36-personal-agent-skills/release.md)；真机验收另见清单。
 
 第 35 轮已实现并打包：简化为“选择服务 → 一键连接 → 系统弹窗逐项允许”，折叠详细设置，保留账号和日历范围。[需求](35-service-connection/requirements.md) · [清单](35-service-connection/checklist.md) · [已确认第二版设计稿](35-service-connection/design.html)。首次引导及设置补连已接入并合并 main，标签 `v0.5.19`；正式 CI 的582/582项 iOS XCTest通过，**[0.5.19（40）IPA 已产出](https://github.com/MinJung-Go/Agentic-Moveliq/actions/runs/39134986064/artifacts/12140041292)**，包内容核验和真机边界见[验证记录](35-service-connection/validation.md)。
 
