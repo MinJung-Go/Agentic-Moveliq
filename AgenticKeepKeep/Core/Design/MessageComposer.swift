@@ -93,9 +93,12 @@ struct MessageComposer: View {
     }
 
     private var field: some View {
-        HStack(alignment: text.isEmpty ? .center : .bottom, spacing: 0) {
+        // Keep the accessory, draft and trailing controls on one vertical center,
+        // including a nonempty or multiline draft and larger Dynamic Type sizes.
+        HStack(alignment: .center, spacing: 0) {
             accessoryButton
             TextField(placeholder, text: $text, axis: .vertical)
+                .textFieldStyle(.plain)
                 .font(Theme.Font.body)
                 .lineLimit(1...4)
                 .focused(focus)

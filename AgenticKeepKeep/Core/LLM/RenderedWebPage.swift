@@ -100,16 +100,51 @@ enum RenderedWebScript {
     """#
 }
 
+/// Search may move between Bing's regional search hosts. Article reading keeps
+/// its original origin. Navigation and content rules share this exact boundary.
+struct RenderedWebPolicy {
+    let url: URL
+    let kind: RenderedWebKind
+    static let searchHosts = ["bing.com", "www.bing.com", "cn.bing.com"]
+
+    init(url: URL, kind: RenderedWebKind) throws {
+        guard LocalBrowserPolicy.allows(url),
+              kind != .search || LocalBrowserPolicy.isSearchPage(url) else { throw PublicWebError.unsafeAddress }
+        self.url = url
+        self.kind = kind
+    }
+
+    var navigationHosts: [String] {
+        kind == .search ? Self.searchHosts : [url.host!.lowercased()]
+    }
+
+    /// Check every explicitly permitted resource origin before giving it to WK.
+    var addressChecks: [URL] {
+        navigationHosts.compactMap {
+            URL(string: "https://" + $0 + "/")
+        }
+    }
+
+    func allowsNavigation(_ target: URL) -> Bool {
+        guard LocalBrowserPolicy.allows(target),
+              navigationHosts.contains(target.host?.lowercased() ?? "") else { return false }
+        return kind != .search || target.path == "/search"
+    }
+}
+
 /// Kept portable so the exact compiled WebKit rule input is testable.
 enum RenderedWebRules {
-    static func json(for url: URL) throws -> String {
-        guard LocalBrowserPolicy.allows(url), let host = url.host else { throw PublicWebError.unsafeAddress }
-        let origin = "^https://" + NSRegularExpression.escapedPattern(for: host.lowercased()) + "(:443)?/"
-        let rules: [[String: Any]] = [
-            ["trigger": ["url-filter": ".*"], "action": ["type": "block"]],
-            ["trigger": ["url-filter": origin], "action": ["type": "ignore-previous-rules"]],
-            ["trigger": ["url-filter": ".*", "resource-type": ["image", "media", "font", "popup"]], "action": ["type": "block"]]
+    static func json(for url: URL, kind: RenderedWebKind = .article) throws -> String {
+        let policy = try RenderedWebPolicy(url: url, kind: kind)
+        var rules: [[String: Any]] = [
+            ["trigger": ["url-filter": ".*"], "action": ["type": "block"]]
         ]
+        for host in policy.navigationHosts {
+            let origin = "^https://" + NSRegularExpression.escapedPattern(for: host) + "(:443)?/"
+            rules.append(["trigger": ["url-filter": origin], "action": ["type": "ignore-previous-rules"]])
+        }
+        rules.append(["trigger": ["url-filter": ".*", "resource-type": ["image", "media", "font", "popup"]],
+                      "action": ["type": "block"]])
         return String(decoding: try JSONSerialization.data(withJSONObject: rules), as: UTF8.self)
     }
 }

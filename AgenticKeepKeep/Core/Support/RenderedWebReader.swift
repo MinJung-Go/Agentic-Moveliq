@@ -7,18 +7,25 @@ import WebKit
 final class RenderedWebReader: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let url: URL
     private let kind: RenderedWebKind
+    private let policy: RenderedWebPolicy
     private var webView: WKWebView?
     private var continuation: CheckedContinuation<RenderedWebSnapshot, Error>?
     private var setup: Task<Void, Never>?
     private var deadline: Task<Void, Never>?
     private var polling: Task<Void, Never>?
     private var navigations = 0
+    private var redirects = 0
     private let ruleID = "moveliq-reader-" + UUID().uuidString
 
-    private init(url: URL, kind: RenderedWebKind) { self.url = url; self.kind = kind }
+    private init(url: URL, kind: RenderedWebKind) throws {
+        self.url = url
+        self.kind = kind
+        self.policy = try RenderedWebPolicy(url: url, kind: kind)
+    }
 
     static func render(_ url: URL, kind: RenderedWebKind) async throws -> RenderedWebSnapshot {
-        let reader = RenderedWebReader(url: url, kind: kind)
+        try Task.checkCancellation()
+        let reader = try RenderedWebReader(url: url, kind: kind)
         return try await reader.run()
     }
 
@@ -35,8 +42,10 @@ final class RenderedWebReader: NSObject, WKNavigationDelegate, WKUIDelegate {
                 }
                 setup = Task { [self] in
                     do {
-                        let address = url
-                        try await Task.detached { try PublicWebTransport.checkAddress(address) }.value
+                        let addresses = policy.addressChecks
+                        try await Task.detached {
+                            for address in addresses { try PublicWebTransport.checkAddress(address) }
+                        }.value
                         try Task.checkCancellation()
                         let rules = try await compileRules()
                         guard continuationIsActive else { removeRules(); return }
@@ -61,13 +70,13 @@ final class RenderedWebReader: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private var continuationIsActive: Bool { continuation != nil && !Task.isCancelled }
     private func allows(_ target: URL) -> Bool {
-        LocalBrowserPolicy.allows(target) && target.host?.lowercased() == url.host?.lowercased()
+        policy.allowsNavigation(target)
     }
 
     private func compileRules() async throws -> WKContentRuleList {
-        // Navigation delegates do not cover subresources. Block all other origins
-        // before loading; same-origin scripts/XHR remain available for rendering.
-        let json = try RenderedWebRules.json(for: url)
+        // Navigation delegates do not cover subresources. Search permits only
+        // its named regional hosts; articles stay same-origin.
+        let json = try RenderedWebRules.json(for: url, kind: kind)
         return try await withCheckedThrowingContinuation { cont in
             WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleID, encodedContentRuleList: json) { rules, _ in
                 if let rules { cont.resume(returning: rules) }
@@ -97,7 +106,9 @@ final class RenderedWebReader: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
                  decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
-        guard continuation != nil, response.isForMainFrame, response.canShowMIMEType,
+        // Reject subframes without failing an otherwise usable main document.
+        guard continuation != nil, response.isForMainFrame else { decisionHandler(.cancel); return }
+        guard response.canShowMIMEType,
               let http = response.response as? HTTPURLResponse, let target = http.url, allows(target) else {
             decisionHandler(.cancel); finish(.failure(PublicWebError.renderRestricted)); return
         }
@@ -108,7 +119,24 @@ final class RenderedWebReader: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard ["text/html", "application/xhtml+xml"].contains(http.mimeType ?? "") else {
             decisionHandler(.cancel); finish(.failure(PublicWebError.extraction)); return
         }
-        decisionHandler(.allow)
+        // HTTP redirects may reach the response delegate without another action
+        // callback. Validate the final DNS address here as well as the initial URL.
+        Task {
+            do {
+                try await Task.detached { try PublicWebTransport.checkAddress(target) }.value
+                guard continuation != nil else { decisionHandler(.cancel); return }
+                decisionHandler(.allow)
+            } catch { decisionHandler(.cancel); finish(.failure(error)) }
+        }
+    }
+
+    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+        redirects += 1
+        // WKWebView.url may still describe a previous/provisional page here.
+        // Content rules constrain the request; the response delegate checks its actual URL.
+        guard redirects <= 8 else {
+            finish(.failure(PublicWebError.renderRestricted)); return
+        }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

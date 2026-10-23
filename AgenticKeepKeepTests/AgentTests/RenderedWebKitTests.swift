@@ -69,9 +69,17 @@ import WebKit
     }
 
     func testWebKitCompilesExactOriginRules() async throws {
+        try await compileRules(for: URL(string: "https://www.swift.org/")!, kind: .article)
+    }
+
+    func testWebKitCompilesRegionalSearchRules() async throws {
+        try await compileRules(for: URL(string: "https://www.bing.com/search?q=Swift")!, kind: .search)
+    }
+
+    private func compileRules(for url: URL, kind: RenderedWebKind) async throws {
         let identifier = "moveliq-test-" + UUID().uuidString
         defer { WKContentRuleListStore.default().removeContentRuleList(forIdentifier: identifier) { _ in } }
-        let json = try RenderedWebRules.json(for: URL(string: "https://www.swift.org/")!)
+        let json = try RenderedWebRules.json(for: url, kind: kind)
         let rules: WKContentRuleList = try await withCheckedThrowingContinuation { continuation in
             WKContentRuleListStore.default().compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: json) { list, error in
                 if let list { continuation.resume(returning: list) }

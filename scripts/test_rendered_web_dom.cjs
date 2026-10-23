@@ -2,7 +2,7 @@
 const fs=require('fs');
 const {chromium}=require(process.env.MOVELIQ_PLAYWRIGHT_MODULE || 'playwright');
 const path=require('path').join(__dirname,'../AgenticKeepKeep/Core/LLM/RenderedWebPage.swift');
-const swift=fs.readFileSync(path,'utf8');
+const swift=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
 const fragment=name=>swift.match(new RegExp('static let '+name+' = #"""\\n([\\s\\S]*?)\\n    """#'))[1];
 const script=kind=>'(() => {\n'+fragment('common')+fragment(kind)+'\n})()';
 (async()=>{

@@ -1,5 +1,34 @@
 # 第 37 轮 · 调查与设计预览验证
 
+## 0.5.23 反馈修复 · 2026-10-24（本地修改）
+
+基线 `579c4cb`，仍在 `feat/personal-agent-skills`，用户明确要求同一分支修改并补充需求。以下验证针对本次未提交改动；历史版本的原生测试数量不代表本次通过。
+
+### 根因与修复
+
+- 开发机直接请求 Bing，`www.bing.com/search` 返回 302 到 `cn.bing.com/search`。原 `RenderedWebReader` 的导航、响应和 DOM 检查均只接受首次 host，内容规则也只允许首次域；合法地区跳转因此会触发 `renderRestricted`。
+- 统一 `RenderedWebPolicy`：搜索仅允许三个明确 Bing 域的 HTTPS `/search` 导航，资源规则匹配同一组域；正文仍限原域。全部允许域先查公开 DNS，最终响应地址再次检查，跳转限 8 次。子框架拒绝不再错误地结束主页面读取。其他 CDN、外站、媒体和图片继续阻止，未关闭安全校验。
+- 响应阶段使用实际响应 URL；不在重定向通知中把尚未更新的 `WKWebView.url` 作为失败依据。响应导航接口依据 [Apple WKNavigationDelegate 文档](https://developer.apple.com/documentation/webkit/wknavigationdelegate/webview(_:decidepolicyfor:decisionhandler:)-19mn2)，内容规则结构参考 [WebKit 官方说明](https://webkit.org/blog/3476/content-blockers-first-look/)。
+- `MessageComposer` 原先在非空草稿时切换 `.bottom`；改为始终 `.center`，显式 plain 文本样式。核对已确认 HTML 的 `align-items:center`，保留 1–4 行与 44 pt 点击区域。实际 iPhone 字体、键盘和菜单布局待验收。
+
+### 已执行的检查
+
+- `scripts/test_rendered_web_dom.cjs`：**9 项通过**，直接执行生产 DOM 脚本，覆盖动态结果、未知结构、验证页、正文与输出上限；同时修复该测试脚本读取 Windows CRLF 后无法定位 Swift 字符串的问题。
+- 5 个修改的 Swift 文件用 tree-sitter 解析，与 HEAD 比较**无新增语法诊断**。解析器对原有 `while await` 测试存在相同诊断，不能将该检查称为 Swift 编译通过。
+- `git diff --check` 通过。
+- 使用隔离 Chromium 页面、移动 UA、生产提取脚本和对应域名限制调查真实搜索。Playwright 的 route 不覆盖所有 HTTP 302，因此探针额外检查最终响应域来模拟读取器的检查；**不是执行原生 WKWebView 或 Swift 策略**。本机原始结果保存在被忽略的 `build/qa/search-region-results.json`。
+
+| 查询 | 原限制／地区策略调查结果 | 内容判断 |
+| --- | --- | --- |
+| 力量新闻 | 实际 302 → `cn.bing.com`；原 host 检查拒绝，地区策略接受；生产 DOM 提取到 10 个候选 | 主要是词义、游戏和书籍，只匹配“力量”，尚无匹配新闻；新增固定回归确保不把这类结果当成功 |
+| Swift documentation | 同样 302，地区策略接受并提取到 10 个候选 | 包含 `docs.swift.org` 官方文档候选；不等于所有候选均相关 |
+
+### 尚未执行
+
+本机没有 Swift 工具链和 Apple SDK。新增 **6 项 Swift 回归**（地区跳转、正文隔离、DNS 预查域、内容规则、地区结果、用户查询相关性）以及 **1 项原生 WK 规则编译测试**已编写，但尚未运行。需要原生 CI 以及 iPhone 对“力量新闻”、连续搜索、停止生成、空白／单行／多行输入与动态字体的验证。尚未提交、推送或生成新 IPA；不能声称本次修复已装机生效。
+
+---
+
 日期：2026-10-23。App 代码基线 `8eebdfc`，分支 `feat/personal-agent-skills`。本轮仅新增文档与 HTML/CSS，未修复原生搜索、修改数据模型或主题。
 
 ## 搜索最小复现
