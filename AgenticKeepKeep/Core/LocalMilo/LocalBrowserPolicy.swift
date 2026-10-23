@@ -4,6 +4,27 @@ import Foundation
 enum LocalBrowserPolicy {
     static let domains = ["bing.com", "mayoclinic.org", "nhs.uk", "cdc.gov", "who.int",
                           "acefitness.org", "acsm.org", "nih.gov", "bmj.com", "health.harvard.edu"]
+    // WKContentRuleList's regex parser rejects alternation (|). A Foundation
+    // regex check alone cannot validate these rules: compile them in WebKit too.
+    static func contentRulesJSON() throws -> String {
+        var rules: [[String: Any]] = [
+            ["trigger": ["url-filter": ".*"], "action": ["type": "block"]]
+        ]
+        for domain in domains {
+            let escaped = domain.replacingOccurrences(of: ".", with: "\\.")
+            rules.append([
+                "trigger": ["url-filter": "^https://([a-z0-9-]+\\.)*" + escaped + "(:443)?/"],
+                "action": ["type": "ignore-previous-rules"]
+            ])
+        }
+        return String(decoding: try JSONSerialization.data(withJSONObject: rules), as: UTF8.self)
+    }
+    static func isSearchPage(_ url: URL) -> Bool {
+        allows(url) && isSearchHost(url.host) && url.path == "/search"
+    }
+    private static func isSearchHost(_ host: String?) -> Bool {
+        ["bing.com", "www.bing.com", "cn.bing.com"].contains(host?.lowercased() ?? "")
+    }
     static func allows(_ url: URL) -> Bool {
         guard url.scheme == "https", let host = url.host?.lowercased(),
               url.user == nil, url.password == nil, url.port == nil || url.port == 443,
@@ -27,7 +48,7 @@ enum LocalBrowserPolicy {
         guard let original = URL(string: raw) else { return nil }
         var url = original
         // Bing wraps result URLs using the a1 base64url format; only decoded allowlisted URLs survive.
-        if original.host == "www.bing.com", original.path.hasPrefix("/ck/"),
+        if allows(original), isSearchHost(original.host), original.path.hasPrefix("/ck/"),
            let encoded = URLComponents(url: original, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "u" })?.value,
            encoded.hasPrefix("a1") {
             var value = String(encoded.dropFirst(2)).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")

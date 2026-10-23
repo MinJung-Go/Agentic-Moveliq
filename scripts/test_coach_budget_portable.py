@@ -51,7 +51,7 @@ func check(_ label: String, context: CoachContext, tools: [LLMTool], policy: Coa
 }
 var failed = false
 do { try check("default", context: context, tools: basic, policy: CoachContextPolicy()) } catch { failed = true }
-context.personalContext = String(repeating: "用户偏好简短说明。", count: 20)
+context.personalContext = PersonalLearningAgent.memoryCapabilities + String(repeating: "用户偏好简短说明。", count: 20)
 do { try check("personal skill (service default)", context: context, tools: basic + [PersonalSkillTool.definition], policy: CoachContextPolicy(window: 32768, inputCap: 32768)) } catch { failed = true }
 context.lifeContext = String(repeating: "用户已确认的训练时段与限制。", count: 50)
 let plugins = CoachPluginTools.definitions(enabled: Set(CoachPlugin.allCases), calendarReady: true, alarmReady: true, musicReady: true)

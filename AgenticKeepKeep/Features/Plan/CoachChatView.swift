@@ -293,7 +293,9 @@ struct CoachChatView: View {
                     if isSending {
                         streamingBubble.id(Self.streamingAnchor)
                     }
-                    if let conversationID { ConversationKnowledgeNotices(conversationID: conversationID) }
+                    if let conversationID {
+                        ConversationKnowledgeNotices(conversationID: conversationID, after: messages.last(where: { $0.role == .user })?.date)
+                    }
                     ForEach(pluginActions.filter { $0.conversationID == conversationID }.filter { ["pending", "partial", "executing"].contains($0.state) || ($0.state == "succeeded" && $0.date.timeIntervalSinceNow > -1800) }.prefix(12), id: \.uuid) { action in
                         CoachPluginActionCard(action: action)
                     }

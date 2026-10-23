@@ -3,6 +3,84 @@ import SwiftData
 @testable import AgenticKeepKeep
 
 @MainActor final class PersonalKnowledgeDataTests: XCTestCase {
+    private final class ReviewClient: LLMClient {
+        var config = LLMClientConfig(baseURL: "", apiKey: "", model: "test")
+        var judgment: KnowledgeJudgment
+        var onReview: (@MainActor () -> Void)?
+        init(source: KnowledgeSource) {
+            judgment = .init(accepted: true, reason: "用户明确自述", evidence: [.init(sourceID: source.id, kind: .preference, quote: source.text)])
+        }
+        func complete(_ request: LLMRequest) async throws -> LLMResponse {
+            await onReview?()
+            return .text(try KnowledgeRules.payload(judgment))
+        }
+    }
+    private func withKnowledgeAccount(_ body: (ModelContext, String) async throws -> Void) async throws {
+        let previousContainer = AppModelContainer.active, previousSession = ServiceCredentials.session
+        let container = try AppModelContainer.inMemory()
+        let token = UUID().uuidString
+        defer {
+            AppModelContainer.active = previousContainer
+            if let previousSession {
+                do { try ServiceCredentials.save(previousSession) } catch { XCTFail("Unable to restore test session: \(error)") }
+            } else { ServiceCredentials.clear() }
+        }
+        try ServiceCredentials.save(.init(user: .init(id: UUID().uuidString, username: "knowledge-test"), token: token, expiresAt: "2099-01-01T00:00:00.000Z"))
+        AppModelContainer.active = container
+        try await body(ModelContext(container), token)
+    }
+    private func toolCall(_ args: [String: Any]) throws -> LLMToolCall {
+        .init(id: UUID().uuidString, name: "skill", argumentsJSON: String(decoding: try JSONSerialization.data(withJSONObject: args), as: UTF8.self))
+    }
+    func testPersonalToolReceiptFollowsPersistenceAndNewSessionCanRead() async throws {
+        try await withKnowledgeAccount { context, token in
+            for kind in ["profile", "memory"] {
+                let conversation = UUID()
+                let message = ChatMessage(role: .user, content: kind == "profile" ? "我叫张爱民" : "我决定先恢复训练规律")
+                message.conversationID = conversation; context.insert(message); try context.save()
+                let sources = try PersonalKnowledgeStore.sources(context, conversation: conversation)
+                let client = ReviewClient(source: try XCTUnwrap(sources.first))
+                let result = try await PersonalSkillSession().execute(toolCall([
+                    "action": "save", "kind": kind, "name": kind == "profile" ? "姓名" : "长期训练决定", "description": "用户自述", "body": message.content
+                ]), sources: sources, context: context, token: token, client: client)
+                XCTAssertFalse(result.failed, result.content)
+                let persisted = try PersonalKnowledgeStore.load(ModelContext(context.container))
+                let item = try XCTUnwrap(persisted.items.first(where: { $0.kind.rawValue == kind }))
+                XCTAssertTrue(result.content.contains(item.id.uuidString))
+                XCTAssertTrue(result.content.contains("revision=1"))
+                let reader = PersonalSkillSession()
+                let loaded = try await reader.execute(toolCall(["action": "load", "kind": kind, "skill_id": item.id.uuidString]), sources: sources, context: context, token: token, client: client)
+                XCTAssertFalse(loaded.failed, loaded.content); XCTAssertTrue(loaded.content.contains(message.content))
+                let wrongKind = try await PersonalSkillSession().execute(toolCall(["action": "load", "kind": "skill", "skill_id": item.id.uuidString]), sources: sources, context: context, token: token, client: client)
+                XCTAssertTrue(wrongKind.failed)
+            }
+        }
+    }
+    func testPersonalToolLateAccountChangeReturnsFailureWithoutWrite() async throws {
+        try await withKnowledgeAccount { context, token in
+            let conversation = UUID(), message = ChatMessage(role: .user, content: "我叫张爱民")
+            message.conversationID = conversation; context.insert(message); try context.save()
+            let sources = try PersonalKnowledgeStore.sources(context, conversation: conversation)
+            let client = ReviewClient(source: try XCTUnwrap(sources.first))
+            client.onReview = { AppModelContainer.active = nil }
+            let result = try await PersonalSkillSession().execute(toolCall(["action": "save", "kind": "profile", "name": "姓名", "description": "用户自述", "body": "张爱民"]), sources: sources, context: context, token: token, client: client)
+            XCTAssertTrue(result.failed)
+            XCTAssertTrue(try PersonalKnowledgeStore.load(context).items.isEmpty)
+        }
+    }
+    func testPersonalToolSourceChangedDuringReviewReturnsFailureWithoutWrite() async throws {
+        try await withKnowledgeAccount { context, token in
+            let conversation = UUID(), message = ChatMessage(role: .user, content: "我叫张爱民")
+            message.conversationID = conversation; context.insert(message); try context.save()
+            let sources = try PersonalKnowledgeStore.sources(context, conversation: conversation)
+            let client = ReviewClient(source: try XCTUnwrap(sources.first))
+            client.onReview = { message.content = "不要记住刚才的话" }
+            let result = try await PersonalSkillSession().execute(toolCall(["action": "save", "kind": "profile", "name": "姓名", "description": "用户自述", "body": "张爱民"]), sources: sources, context: context, token: token, client: client)
+            XCTAssertTrue(result.failed)
+            XCTAssertTrue(try PersonalKnowledgeStore.load(context).items.isEmpty)
+        }
+    }
+
     func testKnowledgeSnapshotPersistsInOnlyItsAccountContainer() throws {
         let first = try AppModelContainer.inMemory(), second = try AppModelContainer.inMemory()
         let context = ModelContext(first), workspace = PersonalKnowledgeWorkspace()

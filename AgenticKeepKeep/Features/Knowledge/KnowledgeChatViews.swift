@@ -3,25 +3,35 @@ import SwiftData
 
 struct ConversationKnowledgeNotices: View {
     var conversationID: UUID
+    var after: Date?
     @Environment(\.modelContext) private var context
     @StateObject private var model = KnowledgeViewModel()
     @State private var showsHistory = false
     private var notices: [KnowledgeNotice] {
-        Array(model.state.notices.filter { $0.conversationID == conversationID && !$0.undone }.suffix(3))
+        Array(model.state.notices.filter {
+            $0.conversationID == conversationID && !$0.undone && $0.dismissed != true
+                && (after == nil || $0.date >= after!)
+        }.suffix(3))
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(notices) { notice in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "bookmark").foregroundStyle(Theme.accent)
+                    Image(systemName: "checkmark.circle").font(.subheadline).foregroundStyle(.secondary).padding(.top, 3)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(notice.message).font(.subheadline)
+                        Text(notice.message).font(.subheadline).foregroundStyle(.secondary)
                         HStack(spacing: 20) {
                             NavigationLink("查看") { KnowledgeDetailView(id: notice.itemID, model: model) }
                             Button("撤销") { model.perform(context) { try $0.undo(noticeID: notice.id) } }
                         }.font(.footnote).tint(Theme.accent)
                     }
                     Spacer(minLength: 0)
+                    Button {
+                        model.perform(context) { $0.dismissNotice(notice.id) }
+                    } label: {
+                        Image(systemName: "xmark").font(.caption).foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                    }.buttonStyle(.plain).accessibilityLabel("收起保存提示，不删除记忆")
                 }.padding(.vertical, 8)
             }
             if model.state.jobs.contains(where: { $0.conversationID == conversationID && $0.state == "failed" }) {

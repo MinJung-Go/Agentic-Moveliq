@@ -80,6 +80,8 @@ struct KnowledgeNotice: Codable, Equatable, Identifiable {
     var previousCandidate: Bool?
     var date = Date()
     var undone = false
+    // Optional for snapshots written before the dismiss action was introduced.
+    var dismissed: Bool? = nil
 }
 struct KnowledgeOperation: Codable, Equatable {
     var id: String
@@ -235,6 +237,40 @@ enum KnowledgeRules {
 }
 
 extension KnowledgeState {
+    @discardableResult mutating func applyVerified(_ proposal: KnowledgeProposal, evidence: [KnowledgeEvidence], operationID: String) throws -> UUID {
+        let target = items.first { $0.id == proposal.skillID }
+        if proposal.action != "save" {
+            guard let target else { throw KnowledgeError.missing }
+            if let kind = proposal.kind, target.kind != kind { throw KnowledgeError.invalid("目标类别不符。") }
+        }
+        let kind = proposal.action == "save" ? proposal.kind : target?.kind
+        guard let kind else { throw KnowledgeError.invalid("缺少内容类别。") }
+        if kind != .skill {
+            guard evidence.contains(where: { [.preference, .explicitRequest, .endorsement, .feedback].contains($0.kind) }) else {
+                throw KnowledgeError.invalid("个人资料与记忆需要用户来源，不能仅依据助手建议或执行回执。")
+            }
+        }
+        switch proposal.action {
+        case "save":
+            guard let content = proposal.content else { throw KnowledgeError.invalid("缺少保存内容。") }
+            return try save(kind: kind, content: content, evidence: evidence, expiresAt: proposal.expiresAt)
+        case "patch":
+            guard let id = proposal.skillID, let version = proposal.expectedRevision, let patches = proposal.patches else { throw KnowledgeError.invalid("缺少局部修改参数。") }
+            try patch(id: id, expected: version, operationID: operationID, patches: patches, evidence: evidence)
+            return id
+        case "evidence":
+            guard let id = proposal.skillID else { throw KnowledgeError.missing }
+            try addEvidence(evidence, to: id)
+            return id
+        default: throw KnowledgeError.invalid("自动整理不支持此操作。")
+        }
+    }
+
+    mutating func dismissNotice(_ id: UUID) {
+        guard let index = notices.firstIndex(where: { $0.id == id }) else { return }
+        notices[index].dismissed = true
+    }
+
     mutating func save(kind: KnowledgeKind, content: KnowledgeContent, evidence: [KnowledgeEvidence], expiresAt: Date? = nil) throws -> UUID {
         try KnowledgeRules.validate(content, kind: kind)
         guard !evidence.isEmpty else { throw KnowledgeError.invalid("保存需要可核验的来源。") }

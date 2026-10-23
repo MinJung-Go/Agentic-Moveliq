@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="moveliq-browser-search-") as directory:
     shutil.copy2(root / "AgenticKeepKeepTests/AgentTests/LocalBrowserSearchTests.swift", tests)
     (package / "Package.swift").write_text('''// swift-tools-version: 5.9
 import PackageDescription
-let package = Package(name: "BrowserSearchChecks", targets: [
+let package = Package(name: "BrowserSearchChecks", platforms: [.macOS(.v13)], targets: [
     .target(name: "AgenticKeepKeep"),
     .testTarget(name: "BrowserSearchTests", dependencies: ["AgenticKeepKeep"])
 ])

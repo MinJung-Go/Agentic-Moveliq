@@ -43,14 +43,8 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
     private func prepare(_ url: URL, generation: UUID) async {
         do {
             // Block unknown subresources as well as top-level navigations. No cookies shared with Safari.
-            let domains = LocalBrowserPolicy.domains.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
-            let publicPattern = "^https://([a-z0-9-]+\\.)*(" + domains + ")(:443)?/"
-            let rules: [[String: Any]] = [
-                ["trigger": ["url-filter": ".*"], "action": ["type": "block"]],
-                ["trigger": ["url-filter": publicPattern], "action": ["type": "ignore-previous-rules"]]
-            ]
-            let json = String(decoding: try JSONSerialization.data(withJSONObject: rules), as: UTF8.self)
-            let rule: WKContentRuleList? = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "milo-public-sites-v1", encodedContentRuleList: json)
+            let json = try LocalBrowserPolicy.contentRulesJSON()
+            let rule: WKContentRuleList? = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "milo-public-sites-v2", encodedContentRuleList: json)
             guard self.generation == generation, continuation != nil else { return }
             let configuration = WKWebViewConfiguration()
             configuration.websiteDataStore = .nonPersistent()
@@ -109,7 +103,7 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
         let page = navigationGeneration
         do {
             let result: CoachToolResult
-            let isSearchPage = url.host == "www.bing.com" && url.path == "/search"
+            let isSearchPage = LocalBrowserPolicy.isSearchPage(url)
             let extractionMode: Mode
             if case .preview = mode { extractionMode = .preview }
             else { extractionMode = isSearchPage ? mode : .read }
@@ -118,7 +112,7 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
                 finish(.success(CoachToolResult(content: "已查看来源")))
                 return
             case .search(let count):
-                guard url.host == "www.bing.com", url.path == "/search" else { notice = "请返回搜索结果页，再使用搜索结果。"; return }
+                guard LocalBrowserPolicy.isSearchPage(url) else { notice = "请返回搜索结果页，再使用搜索结果。"; return }
                 let script = """
                 Array.from(document.querySelectorAll('li.b_algo')).slice(0,50).map(e=>{
                   const a=e.querySelector('h2 a'); return a ? {title:a.innerText.slice(0,160),url:a.href.slice(0,2048),text:(e.querySelector('.b_caption')?.innerText||'').slice(0,1000)} : null;
@@ -146,7 +140,7 @@ final class LocalBrowserSession: NSObject, ObservableObject, WKNavigationDelegat
     }
     var actionTitle: String {
         if case .preview = mode { return "返回对话" }
-        if case .search = mode, webView?.url?.host == "www.bing.com", webView?.url?.path == "/search" { return "使用搜索结果" }
+        if case .search = mode, let url = webView?.url, LocalBrowserPolicy.isSearchPage(url) { return "使用搜索结果" }
         return "让 Milo 阅读这页"
     }
     func retry() { notice = nil; loading = true; webView?.reload() }

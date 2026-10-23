@@ -12,6 +12,146 @@ final class PersonalKnowledgeTests: XCTestCase {
     }
     private var patch: KnowledgePatch { .init(field: .body, oldString: "减少辅助动作。", newString: "减少辅助动作；太晚时讨论休息。") }
 
+    func testDismissingNoticePreservesSavedKnowledgeAndUndo() throws {
+        var (state, _) = try seed()
+        let before = state
+        let notice = state.notices[0]
+        state.dismissNotice(notice.id)
+        XCTAssertEqual(state.items, before.items)
+        XCTAssertEqual(state.operations, before.operations)
+        XCTAssertEqual(state.notices[0].dismissed, true)
+        XCTAssertFalse(state.notices[0].undone)
+        let restored = try JSONDecoder().decode(KnowledgeState.self, from: JSONEncoder().encode(state))
+        XCTAssertEqual(restored, state)
+        try state.undo(noticeID: notice.id)
+        XCTAssertTrue(state.items.isEmpty)
+        XCTAssertTrue(state.notices.isEmpty)
+        XCTAssertFalse(state.suppressedSources.isEmpty)
+    }
+    func testLegacyNoticeWithoutDismissedFlagStillDecodes() throws {
+        let (state, _) = try seed()
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state.notices[0])) as? [String: Any])
+        json.removeValue(forKey: "dismissed")
+        let restored = try JSONDecoder().decode(KnowledgeNotice.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(restored.id, state.notices[0].id)
+        XCTAssertNil(restored.dismissed)
+        XCTAssertFalse(restored.undone)
+    }
+
+    private func arguments(_ value: [String: Any]) throws -> PersonalSkillTool.Arguments {
+        try JSONDecoder().decode(PersonalSkillTool.Arguments.self, from: JSONSerialization.data(withJSONObject: value))
+    }
+
+    func testToolSavesPersonalFactsAfterVerifiedUserSourceWithoutSaveKeyword() async throws {
+        for kind: KnowledgeKind in [.profile, .memory] {
+            let text = kind == .profile ? "我叫张爱民" : "我决定先恢复规律，再提升训练量"
+            let source = KnowledgeSource(id: UUID(), conversationID: UUID(), role: "user", text: text, date: Date())
+            let args = try arguments(["action": "save", "kind": kind.rawValue, "name": kind == .profile ? "姓名" : "长期训练决定", "description": "用户明确表达", "body": text])
+            var state = KnowledgeState()
+            let proposal = try PersonalSkillTool.writeProposal(args, state: state, loaded: [:], sources: [source])
+            let judgment = KnowledgeJudgment(accepted: true, reason: "用户自述", evidence: [.init(sourceID: source.id, kind: .preference, quote: text)])
+            let client = StubClient(.text(try KnowledgeRules.payload(judgment)))
+            let evidence = try await PersonalLearningAgent(client: client).verify(proposal: proposal, sources: [source])
+            try PersonalSkillTool.validatePersonalWrite(proposal, evidence: evidence, sources: [source])
+            let id = try state.applyVerified(proposal, evidence: evidence, operationID: "foreground")
+            XCTAssertEqual(state.items.first?.id, id)
+            XCTAssertEqual(state.items.first?.kind, kind)
+            XCTAssertEqual(state.items.first?.content.body, text)
+            XCTAssertEqual(state.items.first?.revision, 1)
+            XCTAssertEqual(state.items.first?.candidate, false)
+            XCTAssertEqual(state.notices.count, 1)
+            XCTAssertEqual(KnowledgeRules.search(args.name!, in: state, kind: kind).first?.id, id)
+            // Background uses the same mutation; duplicate input must not create a second notice/item.
+            XCTAssertEqual(try state.applyVerified(proposal, evidence: evidence, operationID: "background"), id)
+            XCTAssertEqual(state.items.count, 1); XCTAssertEqual(state.notices.count, 1)
+        }
+    }
+
+    func testPersonalPatchRequiresLoadCorrectKindAndCurrentVersionThenCanUndo() throws {
+        for kind: KnowledgeKind in [.profile, .memory] {
+            var state = KnowledgeState()
+            let id = try state.save(kind: kind, content: .init(name: "称呼", description: "用户称呼", body: "叫我小张"), evidence: [evidence(.preference)])
+            let source = KnowledgeSource(id: UUID(), conversationID: UUID(), role: "user", text: "以后叫我爱民", date: Date())
+            let payload: [String: Any] = ["action": "patch", "kind": kind.rawValue, "skill_id": id.uuidString, "expected_revision": 1,
+                "patches": [["field": "body", "old_string": "叫我小张", "new_string": "叫我爱民"]]]
+            let args = try arguments(payload)
+            XCTAssertThrowsError(try PersonalSkillTool.writeProposal(args, state: state, loaded: [:], sources: [source]))
+            var wrong = payload; wrong["kind"] = "skill"
+            XCTAssertThrowsError(try PersonalSkillTool.writeProposal(arguments(wrong), state: state, loaded: [id: 1], sources: [source]))
+            let proposal = try PersonalSkillTool.writeProposal(args, state: state, loaded: [id: 1], sources: [source])
+            let proof = [KnowledgeEvidence(id: source.id, conversationID: source.conversationID, kind: .preference, date: source.date)]
+            try PersonalSkillTool.validatePersonalWrite(proposal, evidence: proof, sources: [source])
+            XCTAssertEqual(try state.applyVerified(proposal, evidence: proof, operationID: "correction"), id)
+            XCTAssertEqual(state.items[0].content.body, "叫我爱民"); XCTAssertEqual(state.items[0].revision, 2)
+            XCTAssertEqual(state.items[0].history.count, 1)
+            let after = state
+            XCTAssertThrowsError(try PersonalSkillTool.writeProposal(args, state: state, loaded: [id: 1], sources: [source]))
+            XCTAssertThrowsError(try state.applyVerified(proposal, evidence: proof, operationID: "stale-background"))
+            XCTAssertEqual(state, after)
+            try state.undo(noticeID: state.notices.last!.id)
+            XCTAssertEqual(state.items[0].content.body, "叫我小张")
+        }
+    }
+
+    func testPersonalWriteRejectsAssistantClaimsAndUnrelatedOldUserEvidence() throws {
+        let old = KnowledgeSource(id: UUID(), conversationID: UUID(), role: "user", text: "之前的信息", date: Date())
+        let latest = KnowledgeSource(id: UUID(), conversationID: old.conversationID, role: "user", text: "今天聊聊其他事情", date: Date())
+        for kind: KnowledgeKind in [.profile, .memory] {
+            let proposal = KnowledgeProposal(action: "save", kind: kind, content: .init(name: "姓名", description: "猜测", body: "叫小张"), sourceIDs: [old.id, latest.id])
+            let oldProof = KnowledgeEvidence(id: old.id, conversationID: old.conversationID, kind: .preference, date: old.date)
+            XCTAssertThrowsError(try PersonalSkillTool.validatePersonalWrite(proposal, evidence: [oldProof], sources: [old, latest]))
+            for proofKind: KnowledgeEvidenceKind in [.suggestion, .execution] {
+                let proof = KnowledgeEvidence(id: latest.id, conversationID: latest.conversationID, kind: proofKind, date: latest.date)
+                var state = KnowledgeState()
+                XCTAssertThrowsError(try PersonalSkillTool.validatePersonalWrite(proposal, evidence: [proof], sources: [old, latest]))
+                XCTAssertThrowsError(try state.applyVerified(proposal, evidence: [proof], operationID: "bad"))
+                XCTAssertTrue(state.items.isEmpty); XCTAssertTrue(state.notices.isEmpty)
+            }
+        }
+    }
+
+    func testPersonalWriteVerifierFailureLeavesStateUntouched() async throws {
+        let source = KnowledgeSource(id: UUID(), conversationID: UUID(), role: "user", text: "也许这样更好？", date: Date())
+        let args = try arguments(["action": "save", "kind": "memory", "name": "决定", "description": "不明确", "body": "以后都这样做"])
+        let state = KnowledgeState()
+        let proposal = try PersonalSkillTool.writeProposal(args, state: state, loaded: [:], sources: [source])
+        for judgment in [KnowledgeJudgment(accepted: false, reason: "含糊", evidence: []),
+                         KnowledgeJudgment(accepted: true, reason: "", evidence: [.init(sourceID: source.id, kind: .preference, quote: "不存在的用户原文")])] {
+            let client = StubClient(.text(try KnowledgeRules.payload(judgment)))
+            do { _ = try await PersonalLearningAgent(client: client).verify(proposal: proposal, sources: [source]); XCTFail("Unverified input must not reach persistence") }
+            catch { XCTAssertTrue(error is KnowledgeError) }
+        }
+        XCTAssertTrue(state.items.isEmpty)
+    }
+
+    func testSharedWriterRejectsMismatchedCategoryAndSuppressedPersonalSource() throws {
+        var state = KnowledgeState(); let proof = evidence(.preference)
+        let proposal = KnowledgeProposal(action: "save", kind: .profile, content: .init(name: "姓名", description: "用户姓名", body: "张爱民"), sourceIDs: [proof.id])
+        let id = try state.applyVerified(proposal, evidence: [proof], operationID: "first")
+        let bad = KnowledgeProposal(action: "patch", kind: .memory, skillID: id, expectedRevision: 1,
+            patches: [.init(field: .body, oldString: "张爱民", newString: "爱民")], sourceIDs: [proof.id])
+        let before = state
+        XCTAssertThrowsError(try state.applyVerified(bad, evidence: [proof], operationID: "wrong-kind"))
+        XCTAssertEqual(state, before)
+        try state.undo(noticeID: state.notices[0].id)
+        XCTAssertThrowsError(try state.applyVerified(proposal, evidence: [proof], operationID: "background-recreate"))
+        XCTAssertTrue(state.items.isEmpty)
+    }
+
+    func testSaveCannotOverwriteExistingPersonalItemOrReviveArchivedItem() throws {
+        var state = KnowledgeState(); let proof = evidence(.preference)
+        var proposal = KnowledgeProposal(action: "save", kind: .profile, content: .init(name: "姓名", description: "用户姓名", body: "张爱民"), sourceIDs: [proof.id])
+        let id = try state.applyVerified(proposal, evidence: [proof], operationID: "first")
+        try state.setStatus(.archived, id: id, expected: 1)
+        let noticeCount = state.notices.count
+        XCTAssertEqual(try state.applyVerified(proposal, evidence: [proof], operationID: "duplicate"), id)
+        XCTAssertEqual(state.items[0].status, .archived); XCTAssertEqual(state.notices.count, noticeCount)
+        proposal.content?.body = "爱民"
+        let before = state
+        XCTAssertThrowsError(try state.applyVerified(proposal, evidence: [proof], operationID: "overwrite"))
+        XCTAssertEqual(state, before)
+    }
+
     func testAssistantOnlyIsCandidateAndInvisibleToSearch() throws {
         var state = KnowledgeState()
         let id = try state.save(kind: .skill, content: content(), evidence: [evidence(.suggestion)])
